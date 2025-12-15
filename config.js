@@ -29,13 +29,27 @@ module.exports = {
       secure: false
     },
     {
+      name: "Harmonix V4",
+      password: "Kaun.Yuvraj",
+      host: "pnode1.danbot.host",
+      port: 1186,
+      secure: false
+    },
+    {
+      name: "Voidhosting",
+      password: "cocaine",
+      host: "nexus.voidhosting.vip",
+      port: 6004,
+      secure: false
+    },
+    {
       name: "GlceYT",
       password: "glace",
       host: "us-01.strixnodes.com",
       port: 8003,
       secure: false
     }
-    // Add more nodes here for additional redundancy
     // The bot will automatically use the first available node
+    // Automatic failover to next node if one goes down
   ]
 }
