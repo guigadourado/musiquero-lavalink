@@ -38,7 +38,10 @@ module.exports = {
   errorLog: "",
   // Auto-play channels: Messages in these channels will be treated as play commands
   // Set to [] to disable, or add channel IDs/names (e.g., ["music", "123456789012345678"])
-  autoPlayChannels: ["1449954292441288825"],  // Channel ID - messages here will auto-play 
+  autoPlayChannels: ["1449954292441288825"],  // Channel ID - messages here will auto-play
+  // Music commands channel: Music commands can only be used in this channel
+  // Set to null or empty string to allow music commands in any channel
+  musicChannelId: "1449954292441288825",  // Channel ID - music commands restricted to this channel 
   nodes: [
      {
       name: "AYANO LAVA",

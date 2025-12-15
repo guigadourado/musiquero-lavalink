@@ -2,17 +2,18 @@ const { SlashCommandBuilder, ContainerBuilder, MessageFlags, PermissionFlagsBits
 const config = require('../../config.js');
 const { getLang } = require('../../utils/languageLoader');
 const { sendErrorResponse, handleCommandError } = require('../../utils/responseHandler.js');
+const { nowPlayingMessages } = require('../../player.js');
 
 const data = new SlashCommandBuilder()
-  .setName("clear")
-  .setDescription("Clear all bot messages and user command prompts from the channel");
+  .setName("clean")
+  .setDescription("Clean all messages from the channel, keeping only the current playing track info");
 
 module.exports = {
   data: data,
   run: async (client, interaction) => {
     try {
       const lang = await getLang(interaction.guildId);
-      const t = lang.clear;
+      const t = lang.clean;
 
       // Check if user has permission to manage messages
       if (!interaction.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
@@ -35,6 +36,12 @@ module.exports = {
       await interaction.deferReply({ ephemeral: true });
 
       const channel = interaction.channel;
+      const guildId = interaction.guildId;
+      
+      // Get the current "now playing" message ID if it exists
+      const nowPlaying = nowPlayingMessages.get(guildId);
+      const nowPlayingMessageId = nowPlaying && nowPlaying.channelId === channel.id ? nowPlaying.messageId : null;
+      
       let totalDeleted = 0;
       let lastMessageId = null;
       const maxAge = 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds
@@ -51,22 +58,17 @@ module.exports = {
         
         if (messages.size === 0) break;
 
-        // Filter messages to delete:
-        // 1. Bot messages
-        // 2. User slash command interactions (messages that are command responses)
+        // Filter messages to delete: ALL messages except the now playing message
         const messagesToDelete = messages.filter(msg => {
           // Only delete messages less than 14 days old (Discord bulk delete limit)
           const messageAge = now - msg.createdTimestamp;
           if (messageAge > maxAge) return false;
           
-          // Delete bot messages
-          if (msg.author.id === client.user.id) return true;
+          // Don't delete the now playing message
+          if (nowPlayingMessageId && msg.id === nowPlayingMessageId) return false;
           
-          // Delete slash command interaction messages (they have interaction property)
-          // These are the ephemeral or public responses to user commands
-          if (msg.interaction) return true;
-          
-          return false;
+          // Delete ALL other messages (bot messages, user messages, interactions, etc.)
+          return true;
         });
 
         if (messagesToDelete.size === 0) {
@@ -158,14 +160,14 @@ module.exports = {
       });
 
     } catch (error) {
-      const lang = await getLang(interaction.guildId).catch(() => ({ clear: { errors: {} } }));
-      const t = lang.clear?.errors || {};
+      const lang = await getLang(interaction.guildId).catch(() => ({ clean: { errors: {} } }));
+      const t = lang.clean?.errors || {};
       
       return handleCommandError(
         interaction,
         error,
-        'clear',
-        (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while clearing messages.\nPlease try again later.')
+        'clean',
+        (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while cleaning messages.\nPlease try again later.')
       );
     }
   },

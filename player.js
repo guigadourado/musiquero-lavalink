@@ -1042,4 +1042,4 @@ async function startProgressUpdates(client, guildId, message, player, track) {
     return updateInterval;
 }
 
-module.exports = { initializePlayer, cleanupTrackMessages };
+module.exports = { initializePlayer, cleanupTrackMessages, nowPlayingMessages };

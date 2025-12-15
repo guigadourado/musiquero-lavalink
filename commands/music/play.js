@@ -3,7 +3,7 @@ const config = require('../../config.js');
 const SpotifyWebApi = require('spotify-web-api-node');
 const { getData } = require('spotify-url-info')(require('node-fetch'));
 const { sendErrorResponse, handleCommandError } = require('../../utils/responseHandler.js');
-const { checkVoiceChannel: checkVC } = require('../../utils/voiceChannelCheck.js');
+const { checkVoiceChannel: checkVC, checkMusicChannel } = require('../../utils/voiceChannelCheck.js');
 const { getLavalinkManager } = require('../../lavalink.js');
 const { getLang } = require('../../utils/languageLoader');
 const requesters = new Map();
@@ -24,7 +24,7 @@ function getSpotifyCredentials() {
     }
     // Fallback to legacy single credentials
     return [{
-        clientId: config.spotifyClientId,
+    clientId: config.spotifyClientId, 
         clientSecret: config.spotifyClientSecret
     }];
 }
@@ -34,7 +34,7 @@ function createSpotifyApi(credentials) {
     return new SpotifyWebApi({
         clientId: credentials.clientId,
         clientSecret: credentials.clientSecret,
-    });
+});
 }
 
 // Get Spotify API with automatic credential rotation/fallback
@@ -50,33 +50,33 @@ async function getSpotifyPlaylistTracks(playlistId) {
 
     // Try each credential set until one works
     for (let i = 0; i < credentials.length; i++) {
-        try {
+    try {
             const spotifyApi = createSpotifyApi(credentials[i]);
-            const data = await spotifyApi.clientCredentialsGrant();
-            spotifyApi.setAccessToken(data.body.access_token);
+        const data = await spotifyApi.clientCredentialsGrant();
+        spotifyApi.setAccessToken(data.body.access_token);
 
-            let tracks = [];
-            let offset = 0;
-            let limit = 100;
-            let total = 0;
+        let tracks = [];
+        let offset = 0;
+        let limit = 100;
+        let total = 0;
 
-            do {
-                const response = await spotifyApi.getPlaylistTracks(playlistId, { limit, offset });
-                total = response.body.total;
-                offset += limit;
+        do {
+            const response = await spotifyApi.getPlaylistTracks(playlistId, { limit, offset });
+            total = response.body.total;
+            offset += limit;
 
-                for (const item of response.body.items) {
-                    if (item.track && item.track.name && item.track.artists) {
-                        const trackName = `${item.track.name} - ${item.track.artists.map(a => a.name).join(', ')}`;
-                        tracks.push(trackName);
-                    }
+            for (const item of response.body.items) {
+                if (item.track && item.track.name && item.track.artists) {
+                    const trackName = `${item.track.name} - ${item.track.artists.map(a => a.name).join(', ')}`;
+                    tracks.push(trackName);
                 }
-            } while (tracks.length < total);
+            }
+        } while (tracks.length < total);
 
             // Rotate to next credential for next request
             currentCredentialIndex = (i + 1) % credentials.length;
-            return tracks;
-        } catch (error) {
+        return tracks;
+    } catch (error) {
             console.error(`Error fetching Spotify playlist tracks with credential set ${i + 1}:`, error.message);
             lastError = error;
             // Try next credential set
@@ -86,7 +86,7 @@ async function getSpotifyPlaylistTracks(playlistId) {
 
     // All credentials failed
     console.error("All Spotify credentials failed:", lastError);
-    return [];
+        return [];
 }
 
 module.exports = {
@@ -99,6 +99,14 @@ module.exports = {
             const query = interaction.options.getString('name');
 
             await interaction.deferReply();
+
+            // Check if command is in the allowed music channel
+            const musicChannelCheck = await checkMusicChannel(interaction);
+            if (!musicChannelCheck.allowed) {
+                const reply = await interaction.editReply(musicChannelCheck.response);
+                setTimeout(() => reply.delete().catch(() => {}), 5000);
+                return reply;
+            }
 
             const existingPlayer = client.riffy.players.get(interaction.guildId);
             const voiceCheck = await checkVC(interaction, existingPlayer);

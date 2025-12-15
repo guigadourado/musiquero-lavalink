@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { autoplayCollection } = require('../../mongodb.js');
 const { sendSuccessResponse, handleCommandError } = require('../../utils/responseHandler.js');
 const { getLang } = require('../../utils/languageLoader');
+const { checkMusicChannel } = require('../../utils/voiceChannelCheck.js');
 
 const data = new SlashCommandBuilder()
   .setName("autoplay")
@@ -17,6 +18,14 @@ module.exports = {
     run: async (client, interaction) => {
         try {
             await interaction.deferReply();
+
+            // Check if command is in the allowed music channel
+            const musicChannelCheck = await checkMusicChannel(interaction);
+            if (!musicChannelCheck.allowed) {
+                const reply = await interaction.editReply(musicChannelCheck.response);
+                setTimeout(() => reply.delete().catch(() => {}), 5000);
+                return reply;
+            }
 
             const lang = await getLang(interaction.guildId);
             const t = lang.music.autoplay;

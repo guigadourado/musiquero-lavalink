@@ -285,10 +285,10 @@ module.exports = {
             fallback: "❌ An error occurred while fetching support information."
         }
     },
-    clear: {
+    clean: {
         command: {
-            name: "clear",
-            description: "Clear all bot messages and user command prompts from the channel"
+            name: "clean",
+            description: "Clean all messages from the channel, keeping only the current playing track info"
         },
         noPermission: {
             title: "## ❌ Permission Denied",
@@ -296,17 +296,17 @@ module.exports = {
         },
         botNoPermission: {
             title: "## ❌ Bot Permission Missing",
-            message: "The bot needs the **Manage Messages** permission to clear messages."
+            message: "The bot needs the **Manage Messages** permission to clean messages."
         },
         success: {
-            title: "## ✅ Channel Cleared",
+            title: "## ✅ Channel Cleaned",
             message: "Successfully deleted **{count}** message(s) from this channel.",
-            note: "All bot messages and command prompts have been removed."
+            note: "All messages have been removed except the current playing track info."
         },
         errors: {
             title: "## ❌ Error",
-            message: "An error occurred while clearing messages.\nPlease try again later.",
-            fallback: "❌ An error occurred while clearing messages."
+            message: "An error occurred while cleaning messages.\nPlease try again later.",
+            fallback: "❌ An error occurred while cleaning messages."
         }
     },
     music: {
@@ -1039,6 +1039,11 @@ module.exports = {
                 title: "## 🎵 Join Voice Channel",
                 message: "The bot is currently active in **{channelName}**.",
                 note: "Please join **{channelName}** to use music commands."
+            },
+            wrongTextChannel: {
+                title: "## ❌ Wrong Channel",
+                message: "Music commands can only be used in the designated music channel.",
+                note: "Please use music commands in {channel}."
             }
         },
         playerValidation: {

@@ -285,10 +285,10 @@ module.exports = {
             fallback: "❌ Beim Abrufen der Support-Informationen ist ein Fehler aufgetreten."
         }
     },
-    clear: {
+    clean: {
         command: {
-            name: "clear",
-            description: "Alle Bot-Nachrichten und Benutzerbefehle aus dem Kanal löschen"
+            name: "clean",
+            description: "Alle Nachrichten aus dem Kanal löschen, nur die aktuell spielende Track-Info behalten"
         },
         noPermission: {
             title: "## ❌ Berechtigung Verweigert",
@@ -301,7 +301,7 @@ module.exports = {
         success: {
             title: "## ✅ Kanal Bereinigt",
             message: "**{count}** Nachricht(en) aus diesem Kanal erfolgreich gelöscht.",
-            note: "Alle Bot-Nachrichten und Befehle wurden entfernt."
+            note: "Alle Nachrichten wurden entfernt, außer der aktuell spielenden Track-Info."
         },
         errors: {
             title: "## ❌ Fehler",

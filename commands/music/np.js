@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, ContainerBuilder, MessageFlags } = require('discord.js');
-const { checkVoiceChannel } = require('../../utils/voiceChannelCheck.js');
+const { checkVoiceChannel, checkMusicChannel } = require('../../utils/voiceChannelCheck.js');
 const { checkCurrentTrack } = require('../../utils/playerValidation.js');
 const { getEmbedColor, handleCommandError } = require('../../utils/responseHandler.js');
 const { getLang } = require('../../utils/languageLoader');
@@ -25,6 +25,14 @@ module.exports = {
     run: async (client, interaction) => {
         try {
             await interaction.deferReply();
+
+            // Check if command is in the allowed music channel
+            const musicChannelCheck = await checkMusicChannel(interaction);
+            if (!musicChannelCheck.allowed) {
+                const reply = await interaction.editReply(musicChannelCheck.response);
+                setTimeout(() => reply.delete().catch(() => {}), 5000);
+                return reply;
+            }
 
             const lang = await getLang(interaction.guildId);
             const t = lang.music.np;

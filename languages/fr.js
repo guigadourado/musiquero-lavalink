@@ -285,10 +285,10 @@ module.exports = {
             fallback: "❌ Une erreur s'est produite lors de la récupération des informations de support."
         }
     },
-    clear: {
+    clean: {
         command: {
-            name: "clear",
-            description: "Supprimer tous les messages du bot et les commandes utilisateur du canal"
+            name: "clean",
+            description: "Nettoyer tous les messages du canal, en gardant uniquement les informations de la piste en cours"
         },
         noPermission: {
             title: "## ❌ Permission Refusée",
@@ -301,7 +301,7 @@ module.exports = {
         success: {
             title: "## ✅ Canal Nettoyé",
             message: "**{count}** message(s) supprimé(s) avec succès de ce canal.",
-            note: "Tous les messages du bot et les commandes ont été supprimés."
+            note: "Tous les messages ont été supprimés sauf les informations de la piste en cours."
         },
         errors: {
             title: "## ❌ Erreur",

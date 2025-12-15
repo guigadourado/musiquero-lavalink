@@ -285,10 +285,10 @@ module.exports = {
             fallback: "❌ Ocurrió un error al obtener información de soporte."
         }
     },
-    clear: {
+    clean: {
         command: {
-            name: "clear",
-            description: "Eliminar todos los mensajes del bot y los comandos de usuario del canal"
+            name: "clean",
+            description: "Limpiar todos los mensajes del canal, manteniendo solo la información de la pista actual"
         },
         noPermission: {
             title: "## ❌ Permiso Denegado",
@@ -296,12 +296,12 @@ module.exports = {
         },
         botNoPermission: {
             title: "## ❌ Falta Permiso del Bot",
-            message: "El bot necesita el permiso **Gestionar Mensajes** para eliminar mensajes."
+            message: "El bot necesita el permiso **Gestionar Mensajes** para limpiar mensajes."
         },
         success: {
             title: "## ✅ Canal Limpiado",
             message: "Se eliminaron **{count}** mensaje(s) de este canal.",
-            note: "Todos los mensajes del bot y los comandos han sido eliminados."
+            note: "Todos los mensajes han sido eliminados excepto la información de la pista actual."
         },
         errors: {
             title: "## ❌ Error",

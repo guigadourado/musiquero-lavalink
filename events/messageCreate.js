@@ -42,6 +42,24 @@ module.exports = async (client, message) => {
       return;
     }
     
+    // Fetch member if not cached (message.member can be null for uncached guild members)
+    let member = message.member;
+    if (!member && message.guild) {
+      try {
+        member = await message.guild.members.fetch(message.author.id);
+      } catch (fetchError) {
+        console.error(`${colors.cyan}[ AUTO-PLAY ]${colors.reset} ${colors.red}Failed to fetch member:${colors.reset}`, fetchError);
+        // If we can't fetch the member, we can't proceed (need it for voice channel check)
+        return;
+      }
+    }
+    
+    // If member is still null, we can't proceed
+    if (!member) {
+      console.warn(`${colors.cyan}[ AUTO-PLAY ]${colors.reset} ${colors.yellow}Member not available for auto-play${colors.reset}`);
+      return;
+    }
+    
     // Create a mock interaction object that mimics a slash command interaction
     let replyMessage = null;
     let deferred = false;
@@ -51,7 +69,7 @@ module.exports = async (client, message) => {
       guildId: message.guild.id,
       channel: message.channel,
       channelId: message.channel.id,
-      member: message.member,
+      member: member,
       user: message.author,
       options: {
         getString: (name) => {

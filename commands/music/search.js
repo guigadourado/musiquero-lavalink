@@ -2,7 +2,7 @@ const { SlashCommandBuilder, ContainerBuilder, ActionRowBuilder, ButtonBuilder, 
 const config = require('../../config.js');
 const { requesters } = require('./play');
 const { sendErrorResponse, handleCommandError } = require('../../utils/responseHandler.js');
-const { checkVoiceChannel: checkVC } = require('../../utils/voiceChannelCheck.js');
+const { checkVoiceChannel: checkVC, checkMusicChannel } = require('../../utils/voiceChannelCheck.js');
 const { getLavalinkManager } = require('../../lavalink.js');
 const { getLang } = require('../../utils/languageLoader');
 
@@ -39,6 +39,14 @@ module.exports = {
             const query = interaction.options.getString('query');
 
             await interaction.deferReply();
+
+            // Check if command is in the allowed music channel
+            const musicChannelCheck = await checkMusicChannel(interaction);
+            if (!musicChannelCheck.allowed) {
+                const reply = await interaction.editReply(musicChannelCheck.response);
+                setTimeout(() => reply.delete().catch(() => {}), 5000);
+                return reply;
+            }
 
             const nodeManager = getLavalinkManager();
             if (!nodeManager) {

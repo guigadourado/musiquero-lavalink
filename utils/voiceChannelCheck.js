@@ -1,5 +1,6 @@
 const { ContainerBuilder, MessageFlags } = require('discord.js');
 const { getLang } = require('./languageLoader.js');
+const config = require('../config.js');
 
 async function checkVoiceChannel(interaction, player) {
 
@@ -68,5 +69,54 @@ async function checkVoiceChannel(interaction, player) {
     return { allowed: true };
 }
 
-module.exports = { checkVoiceChannel };
+async function checkMusicChannel(interaction) {
+    // If no music channel is configured, allow commands in any channel
+    if (!config.musicChannelId || config.musicChannelId === '') {
+        return { allowed: true };
+    }
+
+    const channelId = interaction.channelId || interaction.channel?.id;
+    
+    // Check if the command is in the allowed music channel
+    if (channelId !== config.musicChannelId) {
+        const lang = await getLang(interaction.guildId).catch(() => {
+            return require('../languages/en.js');
+        });
+
+        const utils = lang?.utils || {};
+        const voiceCheck = utils?.voiceChannelCheck || {
+            wrongTextChannel: {
+                title: "## ❌ Wrong Channel",
+                message: "Music commands can only be used in the designated music channel.",
+                note: "Please use music commands in the correct channel."
+            }
+        };
+
+        const musicChannel = interaction.guild?.channels.cache.get(config.musicChannelId);
+        const channelName = musicChannel ? `<#${config.musicChannelId}>` : 'the music channel';
+
+        const errorContainer = new ContainerBuilder()
+            .setAccentColor(0xff0000)
+            .addTextDisplayComponents(
+                (textDisplay) => textDisplay.setContent(
+                    `${voiceCheck.wrongTextChannel?.title || '## ❌ Wrong Channel'}\n\n` +
+                    `${voiceCheck.wrongTextChannel?.message || 'Music commands can only be used in the designated music channel.'}\n\n` +
+                    `${voiceCheck.wrongTextChannel?.note?.replace('{channel}', channelName) || `Please use music commands in ${channelName}.`}`
+                )
+            );
+        
+        return {
+            allowed: false,
+            response: {
+                components: [errorContainer],
+                flags: MessageFlags.IsComponentsV2,
+                ephemeral: true,
+            }
+        };
+    }
+
+    return { allowed: true };
+}
+
+module.exports = { checkVoiceChannel, checkMusicChannel };
 

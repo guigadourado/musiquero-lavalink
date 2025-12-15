@@ -285,10 +285,10 @@ module.exports = {
             fallback: "❌ 지원 정보를 가져오는 중 오류가 발생했습니다."
         }
     },
-    clear: {
+    clean: {
         command: {
-            name: "clear",
-            description: "채널에서 모든 봇 메시지 및 사용자 명령 프롬프트 제거"
+            name: "clean",
+            description: "채널의 모든 메시지를 정리하고 현재 재생 중인 트랙 정보만 유지"
         },
         noPermission: {
             title: "## ❌ 권한 거부됨",
@@ -301,7 +301,7 @@ module.exports = {
         success: {
             title: "## ✅ 채널 정리됨",
             message: "이 채널에서 **{count}**개의 메시지를 성공적으로 삭제했습니다.",
-            note: "모든 봇 메시지와 명령이 제거되었습니다."
+            note: "현재 재생 중인 트랙 정보를 제외한 모든 메시지가 제거되었습니다."
         },
         errors: {
             title: "## ❌ 오류",
