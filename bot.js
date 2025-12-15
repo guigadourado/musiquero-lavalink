@@ -188,10 +188,29 @@ connectToDatabase().then(() => {
 });
 const express = require("express");
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
+
+// Health check endpoint for Render.com
+app.get('/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
 app.get('/', (req, res) => {
     const imagePath = path.join(__dirname, 'index.html');
-    res.sendFile(imagePath);
+    // If index.html doesn't exist, send a simple response
+    if (fs.existsSync(imagePath)) {
+        res.sendFile(imagePath);
+    } else {
+        res.json({ 
+            message: 'Prime Music Bot is running!',
+            status: 'online',
+            version: '1.4'
+        });
+    }
 });
 
 app.listen(port, () => {
@@ -199,7 +218,7 @@ app.listen(port, () => {
     console.log(`${colors.magenta}${colors.bright}🌐 SERVER STATUS${colors.reset}`);
     console.log('─'.repeat(40));
     console.log(`${colors.cyan}[ SERVER ]${colors.reset} ${colors.green}Online ✅${colors.reset}`);
-    console.log(`${colors.cyan}[ PORT ]${colors.reset} ${colors.yellow}http://localhost:${port}${colors.reset}`);
+    console.log(`${colors.cyan}[ PORT ]${colors.reset} ${colors.yellow}${port}${colors.reset}`);
     console.log(`${colors.cyan}[ TIME ]${colors.reset} ${colors.gray}${new Date().toISOString().replace('T', ' ').split('.')[0]}${colors.reset}`);
     console.log(`${colors.cyan}[ USER ]${colors.reset} ${colors.yellow}GlaceYT${colors.reset}`);
 });

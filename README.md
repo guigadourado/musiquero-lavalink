@@ -32,27 +32,30 @@
 
 ### 🎶 Music Features
 - **Multi-Platform Support**: YouTube, SoundCloud, Spotify (links, text search, and playlists)
-- **High-Quality Audio**: Optimized for smooth playback even on low-memory hosting (512MB+)
+- **High-Quality Audio**: Optimized for smooth playback even on low-memory hosting (256MB/512MB+)
 - **Queue Management**: Advanced queue system with shuffle, loop, and clear options
 - **Playlist Support**: Create, save, and manage custom playlists
-- **Autoplay**: Intelligent autoplay system for continuous music
+- **Enhanced Autoplay**: Improved autoplay system for continuous music
 - **24/7 Mode**: Keep the bot in voice channels 24/7
+- **New Search Command**: Better search functionality
 - **Music Cards**: Beautiful custom-generated music cards with thumbnails
 - **Live Lyrics**: Real-time synchronized lyrics display
 - **Track History**: Automatic history tracking for played songs
 
 ### 🎨 User Experience
-- **Multi-Language Support**: 20+ languages available [ soon ]
-- **Interactive Controls**: Button-based controls for easy music management
+- **Multi-Language Support**: 7 languages available (up to 25 languages planned)
+- **Interactive Controls**: Discord v2 Components - Modern button-based controls
 - **Progress Tracking**: Real-time progress bars and track information
 - **Visual Feedback**: Professional embeds and status updates
 - **Error Handling**: Graceful error handling with user-friendly messages
+- **Console Translation**: Full bot translation including console logs for users and developers
 
 ### ⚡ Performance Optimizations
-- **Low-Memory Mode**: Optimized for hosting environments with limited RAM (512MB+)
+- **Low-Memory Mode**: Optimized for hosting environments with limited RAM (256MB/512MB+)
 - **Efficient Updates**: Reduced update frequencies to minimize CPU/memory usage
 - **Smart Caching**: Optimized thumbnail fetching with fallback systems
 - **Resource Management**: Automatic cleanup and memory optimization
+- **Tested & Verified**: Tested on OpenBotHost hosting platform, optimized for low-RAM plans
 
 ### 🛠️ Advanced Features
 - **Filter System**: Multiple audio filters (bassboost, nightcore, karaoke, etc.)
@@ -60,6 +63,8 @@
 - **Seek Functionality**: Jump to specific positions in tracks
 - **Vote Skip**: Democratic skip system for queue management
 - **Track Info**: Detailed track information display
+- **Auto Node Connection Retry [Beta]**: Automatic reconnection to Lavalink nodes
+- **Enhanced Autoplay**: Improved autoplay system for continuous music
 
 ---
 
@@ -107,15 +112,19 @@ module.exports = {
   spotifyClientSecret: "your_spotify_client_secret", // Optional
   nodes: [
      {
-            name: "GlaceYT",
+            name: "GlceYT",
             password: "glace",
             host: "us-01.strixnodes.com",
             port: 8003,
             secure: false
     }
   ]
+  
+  // Or use any public Lavalink node from your Lavalink provider
 }
 ```
+
+**Note**: The bot includes Auto Node Connection Retry [Beta] - it will automatically reconnect to Lavalink nodes if they disconnect.
 
 ### 5. Enable Discord Intents
 
@@ -130,6 +139,65 @@ In the [Discord Developer Portal](https://discord.com/developers/applications):
 ```bash
 npm start
 ```
+
+---
+
+## 🚀 Deploy to Render.com
+
+### Quick Deploy
+
+1. **Fork/Clone this repository** to your GitHub account
+
+2. **Create a new Web Service on Render.com**:
+   - Go to [Render Dashboard](https://dashboard.render.com/)
+   - Click "New +" → "Web Service"
+   - Connect your GitHub repository
+   - Select the repository
+
+3. **Configure the service**:
+   - **Name**: `prime-music-bot` (or any name you prefer)
+   - **Environment**: `Node`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Plan**: Free (or paid for better performance)
+
+4. **Set Environment Variables**:
+   Click "Environment" and add:
+   ```
+   TOKEN=your_discord_bot_token_here
+   NODE_ENV=production
+   ```
+   
+   Optional (if using env vars instead of config.js):
+   ```
+   MONGODB_URI=your_mongodb_connection_string
+   SPOTIFY_CLIENT_ID=your_spotify_client_id
+   SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+   ```
+
+5. **Configure in config.js**:
+   - Edit `config.js` with your MongoDB URI, Spotify credentials, and Lavalink node settings
+   - Set `TOKEN: ""` in config.js (it will use the TOKEN from environment variable)
+
+6. **Deploy**:
+   - Click "Create Web Service"
+   - Render will automatically build and deploy your bot
+   - Monitor the logs to ensure it starts correctly
+
+### Render.com Configuration Notes
+
+- **Health Check**: The bot includes a `/health` endpoint for Render's health checks
+- **Port**: The bot automatically uses Render's provided PORT (no configuration needed)
+- **Free Tier**: The free tier spins down after 15 minutes of inactivity. Consider upgrading for 24/7 operation
+- **Environment Variables**: Sensitive data should be stored in Render's environment variables, not in code
+
+### Using render.yaml (Alternative Method)
+
+You can also use the included `render.yaml` file for easier deployment:
+1. Push this repository to GitHub
+2. On Render Dashboard, click "New +" → "Blueprint"
+3. Connect your repository
+4. Render will automatically detect and use the `render.yaml` configuration
 
 ---
 
@@ -206,19 +274,17 @@ nodes: [
 
 ## 🌍 Supported Languages
 
-The bot supports **11 languages**:
+The bot supports **7 languages** (up to 25 languages planned):
 
 - 🇺🇸 English (en)
 - 🇪🇸 Spanish (es)
 - 🇫🇷 French (fr)
 - 🇩🇪 German (de)
-- 🇨🇳 Chinese Simplified (cn)
 - 🇯🇵 Japanese (ja)
 - 🇰🇷 Korean (ko)
 - 🇷🇺 Russian (ru)
-- 🇵🇹 Portuguese (pt)
-- 🇸🇦 Arabic (ar)
-- 🇻🇳 Vietnamese (vi)
+
+**Adding Your Own Language**: Add your own language in the `languages/` folder using `en.js` as a template, then use it in `config.js` or via `/language` command.
 
 Change language with: `/language <language_code>`
 
@@ -241,11 +307,19 @@ This bot is optimized for low-memory hosting environments:
 - **Efficient Health Checks**: Optimized monitoring intervals
 - **Memory Management**: Automatic cleanup and resource optimization
 - **Fast Thumbnail Fetching**: Direct YouTube URLs with fallback system
+- **Low-Memory Mode**: Enabled by default for resource-constrained hosting
+
+### Tested & Verified Hosting
+
+- **Tested Platform**: OpenBotHost ([dash.openbot.host](https://dash.openbot.host/))
+- **Optimized For**: 256MB / 512MB RAM
+- **Low-Memory Mode**: Enabled for low-RAM plans
 
 ### Recommended Hosting Specs
 
-- **Minimum**: 512MB RAM, 1 CPU core
-- **Recommended**: 1GB+ RAM, 2+ CPU cores
+- **Minimum**: 256MB RAM, 1 CPU core (tested and working)
+- **Recommended**: 512MB+ RAM, 1+ CPU cores
+- **Optimal**: 1GB+ RAM, 2+ CPU cores
 - **Node.js**: v16.0.0 or higher
 
 ---
@@ -285,6 +359,7 @@ PrimeMusic-Lavalink/
 - Verify Lavalink node is running and accessible
 - Check node configuration in `config.js`
 - Ensure bot has permission to join voice channels
+- Auto Node Connection Retry [Beta] will automatically attempt to reconnect if nodes disconnect
 
 ### Thumbnails not loading
 - Bot will automatically use music icon placeholder
@@ -292,9 +367,14 @@ PrimeMusic-Lavalink/
 - YouTube thumbnails are fetched automatically from track URI
 
 ### High memory usage
-- Enable `lowMemoryMode: true` in config
-- Disable `showVisualizer` if not needed
+- `lowMemoryMode: true` is enabled by default (optimized for 256MB/512MB RAM)
+- Disable `showVisualizer` if not needed (already disabled by default)
 - Consider using `generateSongCard: false` for minimal memory usage
+
+### Node Connection Issues
+- The bot features Auto Node Connection Retry [Beta] - it will automatically reconnect to Lavalink nodes
+- Check node status in console logs
+- Verify node credentials and accessibility
 
 ---
 

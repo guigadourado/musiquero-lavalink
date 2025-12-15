@@ -17,8 +17,8 @@ module.exports = {
   showProgressBar: false,  // Show progress bar in track embed
   showVisualizer: false,  // Show visualizer on music card (disabled for low-memory optimization)
   generateSongCard: true,  // custom song card image, if false uses thumbnail
-  // Performance optimizations for low-memory environments (512MB RAM)
-  lowMemoryMode: true,  // Enable optimizations for low-memory hosting
+  // Performance optimizations for low-memory environments (256MB/512MB RAM)
+  lowMemoryMode: true,  // Enable optimizations for low-memory hosting (tested on OpenBotHost)
   errorLog: "", 
   nodes: [
      {
