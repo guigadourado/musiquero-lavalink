@@ -19,12 +19,21 @@ module.exports = async (client) => {
         }
         
         try {
-            await rest.put(
-                Routes.applicationCommands(client.user.id),
-                { body: commandsArray }
-            );
+            const devGuildId = process.env.DEV_GUILD_ID;
+            if (devGuildId) {
+                await rest.put(
+                    Routes.applicationGuildCommands(client.user.id, devGuildId),
+                    { body: commandsArray }
+                );
+                console.log(`${colors.cyan}[ REST ]${colors.reset} ${colors.green}Registered ${commandsArray.length} application (/) commands to DEV_GUILD_ID ${colors.yellow}${devGuildId}${colors.reset} ✅`);
+            } else {
+                await rest.put(
+                    Routes.applicationCommands(client.user.id),
+                    { body: commandsArray }
+                );
+                console.log(`${colors.cyan}[ REST ]${colors.reset} ${colors.green}${lang.console?.events?.rest?.commandsRegistered?.replace('{count}', commandsArray.length) || `Successfully registered ${commandsArray.length} application (/) commands globally ✅`}${colors.reset}`);
+            }
             
-            console.log(`${colors.cyan}[ REST ]${colors.reset} ${colors.green}${lang.console?.events?.rest?.commandsRegistered?.replace('{count}', commandsArray.length) || `Successfully registered ${commandsArray.length} application (/) commands globally ✅`}${colors.reset}`);
         } catch (error) {
             console.error(`${colors.cyan}[ REST ]${colors.reset} ${colors.red}${lang.console?.events?.rest?.commandsFailed || 'Failed to register commands ❌'}${colors.reset}`);
             console.error(`${colors.gray}${lang.console?.events?.rest?.error?.replace('{message}', error.message) || `Error: ${error.message}`}${colors.reset}`);
