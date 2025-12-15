@@ -27,6 +27,15 @@ module.exports = {
       host: "194.58.66.44",
       port: 3660,
       secure: false
+    },
+    {
+      name: "GlceYT",
+      password: "glace",
+      host: "us-01.strixnodes.com",
+      port: 8003,
+      secure: false
     }
+    // Add more nodes here for additional redundancy
+    // The bot will automatically use the first available node
   ]
 }
