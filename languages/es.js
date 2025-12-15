@@ -285,6 +285,30 @@ module.exports = {
             fallback: "❌ Ocurrió un error al obtener información de soporte."
         }
     },
+    clear: {
+        command: {
+            name: "clear",
+            description: "Eliminar todos los mensajes del bot y los comandos de usuario del canal"
+        },
+        noPermission: {
+            title: "## ❌ Permiso Denegado",
+            message: "Necesitas el permiso **Gestionar Mensajes** para usar este comando."
+        },
+        botNoPermission: {
+            title: "## ❌ Falta Permiso del Bot",
+            message: "El bot necesita el permiso **Gestionar Mensajes** para eliminar mensajes."
+        },
+        success: {
+            title: "## ✅ Canal Limpiado",
+            message: "Se eliminaron **{count}** mensaje(s) de este canal.",
+            note: "Todos los mensajes del bot y los comandos han sido eliminados."
+        },
+        errors: {
+            title: "## ❌ Error",
+            message: "Ocurrió un error al limpiar mensajes.\nPor favor, inténtalo de nuevo más tarde.",
+            fallback: "❌ Ocurrió un error al limpiar mensajes."
+        }
+    },
     music: {
         autoplay: {
             command: {

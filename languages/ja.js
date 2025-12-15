@@ -285,6 +285,30 @@ module.exports = {
             fallback: "❌ サポート情報の取得中にエラーが発生しました。"
         }
     },
+    clear: {
+        command: {
+            name: "clear",
+            description: "チャンネルからすべてのボットメッセージとユーザーコマンドを削除"
+        },
+        noPermission: {
+            title: "## ❌ 権限が拒否されました",
+            message: "このコマンドを使用するには、**メッセージの管理**権限が必要です。"
+        },
+        botNoPermission: {
+            title: "## ❌ ボットの権限が不足しています",
+            message: "メッセージを削除するには、ボットに**メッセージの管理**権限が必要です。"
+        },
+        success: {
+            title: "## ✅ チャンネルがクリアされました",
+            message: "このチャンネルから**{count}**件のメッセージを削除しました。",
+            note: "すべてのボットメッセージとコマンドが削除されました。"
+        },
+        errors: {
+            title: "## ❌ エラー",
+            message: "メッセージの削除中にエラーが発生しました。\n後でもう一度お試しください。",
+            fallback: "❌ メッセージの削除中にエラーが発生しました。"
+        }
+    },
     music: {
         autoplay: {
             command: {

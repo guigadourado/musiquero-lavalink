@@ -285,6 +285,30 @@ module.exports = {
             fallback: "❌ An error occurred while fetching support information."
         }
     },
+    clear: {
+        command: {
+            name: "clear",
+            description: "Clear all bot messages and user command prompts from the channel"
+        },
+        noPermission: {
+            title: "## ❌ Permission Denied",
+            message: "You need the **Manage Messages** permission to use this command."
+        },
+        botNoPermission: {
+            title: "## ❌ Bot Permission Missing",
+            message: "The bot needs the **Manage Messages** permission to clear messages."
+        },
+        success: {
+            title: "## ✅ Channel Cleared",
+            message: "Successfully deleted **{count}** message(s) from this channel.",
+            note: "All bot messages and command prompts have been removed."
+        },
+        errors: {
+            title: "## ❌ Error",
+            message: "An error occurred while clearing messages.\nPlease try again later.",
+            fallback: "❌ An error occurred while clearing messages."
+        }
+    },
     music: {
         autoplay: {
             command: {

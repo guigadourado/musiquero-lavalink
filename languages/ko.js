@@ -285,6 +285,30 @@ module.exports = {
             fallback: "❌ 지원 정보를 가져오는 중 오류가 발생했습니다."
         }
     },
+    clear: {
+        command: {
+            name: "clear",
+            description: "채널에서 모든 봇 메시지 및 사용자 명령 프롬프트 제거"
+        },
+        noPermission: {
+            title: "## ❌ 권한 거부됨",
+            message: "이 명령을 사용하려면 **메시지 관리** 권한이 필요합니다."
+        },
+        botNoPermission: {
+            title: "## ❌ 봇 권한 누락",
+            message: "메시지를 삭제하려면 봇에 **메시지 관리** 권한이 필요합니다."
+        },
+        success: {
+            title: "## ✅ 채널 정리됨",
+            message: "이 채널에서 **{count}**개의 메시지를 성공적으로 삭제했습니다.",
+            note: "모든 봇 메시지와 명령이 제거되었습니다."
+        },
+        errors: {
+            title: "## ❌ 오류",
+            message: "메시지를 삭제하는 중 오류가 발생했습니다.\n나중에 다시 시도해 주세요.",
+            fallback: "❌ 메시지를 삭제하는 중 오류가 발생했습니다."
+        }
+    },
     music: {
         autoplay: {
             command: {

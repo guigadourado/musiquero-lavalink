@@ -17,39 +17,76 @@ const data = new SlashCommandBuilder()
       .setRequired(true)
   );
 
-const spotifyApi = new SpotifyWebApi({
-    clientId: config.spotifyClientId, 
-    clientSecret: config.spotifyClientSecret,
-});
+// Get Spotify credentials - supports multiple sets with fallback
+function getSpotifyCredentials() {
+    if (config.spotifyCredentials && Array.isArray(config.spotifyCredentials) && config.spotifyCredentials.length > 0) {
+        return config.spotifyCredentials;
+    }
+    // Fallback to legacy single credentials
+    return [{
+        clientId: config.spotifyClientId,
+        clientSecret: config.spotifyClientSecret
+    }];
+}
+
+// Create Spotify API instance with credentials
+function createSpotifyApi(credentials) {
+    return new SpotifyWebApi({
+        clientId: credentials.clientId,
+        clientSecret: credentials.clientSecret,
+    });
+}
+
+// Get Spotify API with automatic credential rotation/fallback
+let currentCredentialIndex = 0;
+function getSpotifyApi() {
+    const credentials = getSpotifyCredentials();
+    return createSpotifyApi(credentials[currentCredentialIndex % credentials.length]);
+}
 
 async function getSpotifyPlaylistTracks(playlistId) {
-    try {
-        const data = await spotifyApi.clientCredentialsGrant();
-        spotifyApi.setAccessToken(data.body.access_token);
+    const credentials = getSpotifyCredentials();
+    let lastError = null;
 
-        let tracks = [];
-        let offset = 0;
-        let limit = 100;
-        let total = 0;
+    // Try each credential set until one works
+    for (let i = 0; i < credentials.length; i++) {
+        try {
+            const spotifyApi = createSpotifyApi(credentials[i]);
+            const data = await spotifyApi.clientCredentialsGrant();
+            spotifyApi.setAccessToken(data.body.access_token);
 
-        do {
-            const response = await spotifyApi.getPlaylistTracks(playlistId, { limit, offset });
-            total = response.body.total;
-            offset += limit;
+            let tracks = [];
+            let offset = 0;
+            let limit = 100;
+            let total = 0;
 
-            for (const item of response.body.items) {
-                if (item.track && item.track.name && item.track.artists) {
-                    const trackName = `${item.track.name} - ${item.track.artists.map(a => a.name).join(', ')}`;
-                    tracks.push(trackName);
+            do {
+                const response = await spotifyApi.getPlaylistTracks(playlistId, { limit, offset });
+                total = response.body.total;
+                offset += limit;
+
+                for (const item of response.body.items) {
+                    if (item.track && item.track.name && item.track.artists) {
+                        const trackName = `${item.track.name} - ${item.track.artists.map(a => a.name).join(', ')}`;
+                        tracks.push(trackName);
+                    }
                 }
-            }
-        } while (tracks.length < total);
+            } while (tracks.length < total);
 
-        return tracks;
-    } catch (error) {
-        console.error("Error fetching Spotify playlist tracks:", error);
-        return [];
+            // Rotate to next credential for next request
+            currentCredentialIndex = (i + 1) % credentials.length;
+            return tracks;
+        } catch (error) {
+            console.error(`Error fetching Spotify playlist tracks with credential set ${i + 1}:`, error.message);
+            lastError = error;
+            // Try next credential set
+            continue;
+        }
     }
+
+    // All credentials failed
+    console.error("All Spotify credentials failed:", lastError);
+    return [];
 }
 
 module.exports = {

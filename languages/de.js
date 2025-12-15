@@ -285,6 +285,30 @@ module.exports = {
             fallback: "❌ Beim Abrufen der Support-Informationen ist ein Fehler aufgetreten."
         }
     },
+    clear: {
+        command: {
+            name: "clear",
+            description: "Alle Bot-Nachrichten und Benutzerbefehle aus dem Kanal löschen"
+        },
+        noPermission: {
+            title: "## ❌ Berechtigung Verweigert",
+            message: "Du benötigst die Berechtigung **Nachrichten Verwalten**, um diesen Befehl zu verwenden."
+        },
+        botNoPermission: {
+            title: "## ❌ Bot-Berechtigung Fehlt",
+            message: "Der Bot benötigt die Berechtigung **Nachrichten Verwalten**, um Nachrichten zu löschen."
+        },
+        success: {
+            title: "## ✅ Kanal Bereinigt",
+            message: "**{count}** Nachricht(en) aus diesem Kanal erfolgreich gelöscht.",
+            note: "Alle Bot-Nachrichten und Befehle wurden entfernt."
+        },
+        errors: {
+            title: "## ❌ Fehler",
+            message: "Beim Löschen der Nachrichten ist ein Fehler aufgetreten.\\nBitte versuche es später erneut.",
+            fallback: "❌ Beim Löschen der Nachrichten ist ein Fehler aufgetreten."
+        }
+    },
     music: {
         autoplay: {
             command: {

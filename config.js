@@ -5,6 +5,22 @@ module.exports = {
   language: "en",
   ownerID: ["1004206704994566164", ""], 
   mongodbUri : "mongodb+srv://shiva:shiva@musicbotyt.ouljywv.mongodb.net/?retryWrites=true&w=majority",
+  // Spotify credentials - supports multiple sets for load balancing and fallback
+  spotifyCredentials: [
+    {
+      clientId: "d92baed9605a45a39ed7c2a2d960b1c1",
+      clientSecret: "e9b29f6739de4315bc03b6d8a8e93b03"
+    },
+    {
+      clientId: "85aab1d51a174aad9eed6d7989f530e6",
+      clientSecret: "b2ad05aa725e434c88776a1be8eab6c2"
+    },
+    {
+      clientId: "f71a3da30e254962965ca2a89d6f74b9",
+      clientSecret: "199a619d22dd4e55a4a2c1a7a3d70e63"
+    }
+  ],
+  // Legacy support - uses first credential set
   spotifyClientId : "d92baed9605a45a39ed7c2a2d960b1c1",
   spotifyClientSecret : "e9b29f6739de4315bc03b6d8a8e93b03",
   setupFilePath: './commands/setup.json',
