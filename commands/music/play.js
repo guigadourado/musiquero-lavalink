@@ -17,13 +17,16 @@ const data = new SlashCommandBuilder()
       .setRequired(true)
   );
 
-const spotifyApi = new SpotifyWebApi({
-    clientId: config.spotifyClientId, 
-    clientSecret: config.spotifyClientSecret,
-});
+const spotifyClientId = config.spotifyClientId || process.env.SPOTIFY_CLIENT_ID;
+const spotifyClientSecret = config.spotifyClientSecret || process.env.SPOTIFY_CLIENT_SECRET;
+const spotifyEnabled = Boolean(spotifyClientId && spotifyClientSecret);
+const spotifyApi = spotifyEnabled
+    ? new SpotifyWebApi({ clientId: spotifyClientId, clientSecret: spotifyClientSecret })
+    : null;
 
 async function getSpotifyPlaylistTracks(playlistId) {
     try {
+        if (!spotifyApi) return [];
         const data = await spotifyApi.clientCredentialsGrant();
         spotifyApi.setAccessToken(data.body.access_token);
 
@@ -164,6 +167,15 @@ module.exports = {
             let isPlaylist = false;
 
             if (query.includes('spotify.com')) {
+                if (!spotifyEnabled) {
+                    return sendErrorResponse(
+                        interaction,
+                        (t.spotifyError?.title || "## ❌ Spotify Error") + '\n\n' +
+                        "Spotify support is not configured on this bot.\n" +
+                        "Set `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` (or fill them in `config.js`) and restart the bot.",
+                        8000
+                    );
+                }
                 try {
                     const spotifyData = await getData(query);
 

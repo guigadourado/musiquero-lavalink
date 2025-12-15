@@ -9,6 +9,32 @@ const { getLavalinkManager } = require('./lavalink.js');
 const { getLang, getLangSync } = require('./utils/languageLoader.js');
 require('dotenv').config();
 
+function validateStartupConfig() {
+    const lang = getLangSync?.() || {};
+    const token = config.TOKEN || process.env.TOKEN;
+    if (!token) {
+        console.log('\n' + '─'.repeat(60));
+        console.log(`${colors.cyan}[ CONFIG ]${colors.reset} ${colors.red}Missing Discord bot token${colors.reset}`);
+        console.log('─'.repeat(60));
+        console.log(`${colors.gray}Create a .env file in the project root with:${colors.reset}`);
+        console.log(`${colors.yellow}TOKEN=your_discord_bot_token_here${colors.reset}\n`);
+        console.log(`${colors.gray}Then restart with: npm start${colors.reset}`);
+        console.log('─'.repeat(60) + '\n');
+        process.exit(1);
+    }
+
+    if (!Array.isArray(config.nodes) || config.nodes.length === 0) {
+        console.log('\n' + '─'.repeat(60));
+        console.log(`${colors.cyan}[ CONFIG ]${colors.reset} ${colors.red}No Lavalink nodes configured${colors.reset}`);
+        console.log('─'.repeat(60));
+        console.log(`${colors.gray}Set Lavalink nodes in config.js (nodes: [...]) or provide:${colors.reset}`);
+        console.log(`${colors.yellow}LAVALINK_NODES_JSON=[{\"name\":\"local\",\"host\":\"localhost\",\"port\":2333,\"password\":\"youshallnotpass\",\"secure\":false}]${colors.reset}\n`);
+        console.log(`${colors.gray}Then restart with: npm start${colors.reset}`);
+        console.log('─'.repeat(60) + '\n');
+        process.exit(1);
+    }
+}
+
 const client = new Client({
     intents: Object.keys(GatewayIntentBits).map((a) => {
         return GatewayIntentBits[a];
@@ -17,6 +43,7 @@ const client = new Client({
 
 client.config = config;
 
+validateStartupConfig();
 
 process.on('unhandledRejection', (error) => {
     const lang = getLangSync();
@@ -47,7 +74,6 @@ process.on('unhandledRejection', (error) => {
             return; 
         }
     }
-    
     console.error(lang.console?.bot?.unhandledRejection || 'Unhandled Rejection:', error);
 });
 
