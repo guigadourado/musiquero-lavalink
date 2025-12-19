@@ -36,6 +36,8 @@ module.exports = {
   // Performance optimizations for low-memory environments (256MB/512MB RAM)
   lowMemoryMode: true,  // Enable optimizations for low-memory hosting (tested on OpenBotHost)
   errorLog: "",
+  // Spotify playlist limits for memory efficiency
+  spotifyPlaylistLimit: 150,  // Maximum tracks to load from Spotify playlists (reduces memory usage)
   // Auto-play channels: Messages in these channels will be treated as play commands
   // Set to [] to disable, or add channel IDs/names (e.g., ["music", "123456789012345678"])
   autoPlayChannels: ["1449954292441288825"],  // Channel ID - messages here will auto-play

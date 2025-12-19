@@ -215,7 +215,10 @@ async function initializePlayer(client) {
             const components = [];
             let attachment = null;
 
-            if (config.generateSongCard !== false) {
+            // Skip music card generation in low memory mode to save memory
+            const shouldGenerateCard = config.generateSongCard !== false && !config.lowMemoryMode;
+            
+            if (shouldGenerateCard) {
                 // Extract YouTube ID from track URI for better thumbnail fetching
                 let thumbnailURL = track.info.thumbnail || '';
                 const trackUri = track.info.uri || '';
@@ -272,7 +275,10 @@ async function initializePlayer(client) {
             components.push(controlsContainer);
             components.push(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large));
 
-            if (config.generateSongCard !== false) {
+            // Skip music card generation in low memory mode to save memory
+            const shouldGenerateCard = config.generateSongCard !== false && !config.lowMemoryMode;
+            
+            if (shouldGenerateCard) {
                 const mediaGallery = new MediaGalleryBuilder()
                     .addItems(
                         (mediaItem) => mediaItem

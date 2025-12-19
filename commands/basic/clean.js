@@ -34,6 +34,8 @@ module.exports = {
       }
 
       await interaction.deferReply({ ephemeral: true });
+      
+      // Note: This command runs silently - no success message will be sent
 
       const channel = interaction.channel;
       const guildId = interaction.guildId;
@@ -143,21 +145,14 @@ module.exports = {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      const embedColor = parseInt(config.embedColor?.replace('#', '') || '1db954', 16);
-      const successContainer = new ContainerBuilder()
-        .setAccentColor(embedColor)
-        .addTextDisplayComponents(
-          (textDisplay) => textDisplay.setContent(
-            t.success.title + '\n\n' +
-            t.success.message.replace('{count}', totalDeleted) + '\n' +
-            t.success.note
-          )
-        );
-
-      return interaction.editReply({
-        components: [successContainer],
-        flags: MessageFlags.IsComponentsV2,
-      });
+      // Command runs silently - delete the ephemeral reply without showing success message
+      try {
+        await interaction.deleteReply();
+      } catch (err) {
+        // If reply was already deleted or doesn't exist, ignore
+      }
+      
+      return;
 
     } catch (error) {
       const lang = await getLang(interaction.guildId).catch(() => ({ clean: { errors: {} } }));
