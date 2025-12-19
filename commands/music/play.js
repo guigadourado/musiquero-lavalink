@@ -129,6 +129,17 @@ module.exports = {
 
             const query = interaction.options.getString('name');
 
+            // Validate query
+            if (!query || typeof query !== 'string' || query.trim().length === 0) {
+                return sendErrorResponse(
+                    interaction,
+                    t.noResults.title + '\n\n' +
+                    t.noResults.message + '\n' +
+                    t.noResults.note,
+                    5000
+                );
+            }
+
             await interaction.deferReply();
 
             // Check if command is in the allowed music channel
@@ -264,21 +275,79 @@ module.exports = {
                     );
                 }
             } else {
+                // Ensure query is valid before resolving
+                const trimmedQuery = query.trim();
+                if (!trimmedQuery || trimmedQuery.length < 2) {
+                    return sendErrorResponse(
+                        interaction,
+                        t.noResults.title + '\n\n' +
+                        t.noResults.message + '\n' +
+                        t.noResults.note,
+                        5000
+                    );
+                }
+                
                 let resolve;
                 try {
-                    resolve = await client.riffy.resolve({ query, requester: interaction.user.username });
+                    resolve = await client.riffy.resolve({ query: trimmedQuery, requester: interaction.user.username });
                 } catch (err) {
                     const msg = err?.message || '';
+                    const errorString = String(err);
+                    
+                    // Check for specific error types
+                    if (msg.includes('response.data.map is not a function') || 
+                        msg.includes('map is not a function') ||
+                        errorString.includes('map is not a function')) {
+                        console.error(`[ PLAY ] Invalid response format from Lavalink for query: ${trimmedQuery}`);
+                        return sendErrorResponse(
+                            interaction,
+                            t.invalidResponse.title + '\n\n' +
+                            t.invalidResponse.message + '\n' +
+                            t.invalidResponse.note,
+                            5000
+                        );
+                    }
+                    
                     if (msg.includes('fetch failed') || msg.includes('No nodes are available') || (err.cause && err.cause.code === 'ECONNREFUSED')) {
                         await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
                         await nodeManager.ensureNodeAvailable();
-                        resolve = await client.riffy.resolve({ query, requester: interaction.user.username });
+                        try {
+                            resolve = await client.riffy.resolve({ query: trimmedQuery, requester: interaction.user.username });
+                        } catch (retryErr) {
+                            console.error(`[ PLAY ] Retry failed:`, retryErr.message);
+                            return sendErrorResponse(
+                                interaction,
+                                t.invalidResponse.title + '\n\n' +
+                                t.invalidResponse.message + '\n' +
+                                t.invalidResponse.note,
+                                5000
+                            );
+                        }
                     } else {
-                        throw err;
+                        console.error(`[ PLAY ] Resolve error:`, err.message);
+                        return sendErrorResponse(
+                            interaction,
+                            t.invalidResponse.title + '\n\n' +
+                            t.invalidResponse.message + '\n' +
+                            t.invalidResponse.note,
+                            5000
+                        );
                     }
                 }
 
-                if (!resolve || typeof resolve !== 'object' || !Array.isArray(resolve.tracks)) {
+                if (!resolve || typeof resolve !== 'object') {
+                    console.error(`[ PLAY ] Invalid resolve response:`, typeof resolve);
+                    return sendErrorResponse(
+                        interaction,
+                        t.invalidResponse.title + '\n\n' +
+                        t.invalidResponse.message + '\n' +
+                        t.invalidResponse.note,
+                        5000
+                    );
+                }
+                
+                if (!Array.isArray(resolve.tracks)) {
+                    console.error(`[ PLAY ] Tracks is not an array. Response:`, JSON.stringify(resolve).substring(0, 200));
                     return sendErrorResponse(
                         interaction,
                         t.invalidResponse.title + '\n\n' +

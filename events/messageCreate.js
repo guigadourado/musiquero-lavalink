@@ -29,7 +29,7 @@ module.exports = async (client, message) => {
     
     // Ignore empty messages or messages that are too short
     const content = message.content.trim();
-    if (!content || content.length < 1) return;
+    if (!content || content.length < 2) return;
     
     // Ignore if message starts with common command prefixes (to avoid conflicts)
     const commandPrefixes = ['!', '/', '.', '-', '?', '$', '%', '&', '*'];
