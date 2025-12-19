@@ -238,6 +238,7 @@ module.exports = {
 
             let tracksToQueue = [];
             let isPlaylist = false;
+            let queuedTracks = 0; // Track count for success message
 
             if (query.includes('spotify.com')) {
                 try {
@@ -289,24 +290,19 @@ module.exports = {
 
                 if (resolve.loadType === 'playlist') {
                     isPlaylist = true;
+                    const queueLengthBefore = player.queue.length;
                     for (const track of resolve.tracks) {
                         track.info.requester = interaction.user.username;
                         player.queue.add(track);
                         requesters.set(track.info.uri, interaction.user.username);
                     }
-                    // Shuffle playlist tracks after adding them
-                    if (player.queue.length > 1) {
-                        // Fisher-Yates shuffle algorithm
-                        for (let i = player.queue.length - 1; i > 0; i--) {
-                            const j = Math.floor(Math.random() * (i + 1));
-                            [player.queue[i], player.queue[j]] = [player.queue[j], player.queue[i]];
-                        }
-                    }
+                    queuedTracks = player.queue.length - queueLengthBefore;
                 } else if (resolve.loadType === 'search' || resolve.loadType === 'track') {
                     const track = resolve.tracks.shift();
                     track.info.requester = interaction.user.username;
                     player.queue.add(track);
                     requesters.set(track.info.uri, interaction.user.username);
+                    queuedTracks = 1;
                 } else {
                     return sendErrorResponse(
                         interaction,
@@ -318,48 +314,50 @@ module.exports = {
                 }
             }
 
-            let queuedTracks = 0;
-            const maxTracks = config.spotifyPlaylistLimit || 100; // Reduced from 200 for memory efficiency
-            const batchSize = 5; // Process tracks in small batches to reduce memory pressure
-            const delayBetweenBatches = 200; // Small delay between batches
+            // Only process tracksToQueue if it has items (Spotify playlists/tracks)
+            // Note: queuedTracks is already set for non-Spotify tracks above
+            if (tracksToQueue.length > 0) {
+                const maxTracks = config.spotifyPlaylistLimit || 100;
+                const batchSize = 5; // Process tracks in small batches to reduce memory pressure
+                const delayBetweenBatches = 200; // Small delay between batches
 
-            // Process tracks in batches for memory efficiency
-            for (let i = 0; i < Math.min(tracksToQueue.length, maxTracks); i += batchSize) {
-                const batch = tracksToQueue.slice(i, i + batchSize);
-                
-                // Process batch in parallel but limit concurrency
-                const batchPromises = batch.map(async (trackQuery) => {
-                    try {
-                        const resolve = await client.riffy.resolve({ query: trackQuery, requester: interaction.user.username });
-                        if (resolve && resolve.tracks && resolve.tracks.length > 0) {
-                            const trackInfo = resolve.tracks[0];
-                            player.queue.add(trackInfo);
-                            requesters.set(trackInfo.info.uri, interaction.user.username);
-                            return true;
+                // Process tracks in batches for memory efficiency
+                for (let i = 0; i < Math.min(tracksToQueue.length, maxTracks); i += batchSize) {
+                    const batch = tracksToQueue.slice(i, i + batchSize);
+                    
+                    // Process batch in parallel but limit concurrency
+                    const batchPromises = batch.map(async (trackQuery) => {
+                        try {
+                            const resolve = await client.riffy.resolve({ query: trackQuery, requester: interaction.user.username });
+                            if (resolve && resolve.tracks && resolve.tracks.length > 0) {
+                                const trackInfo = resolve.tracks[0];
+                                player.queue.add(trackInfo);
+                                requesters.set(trackInfo.info.uri, interaction.user.username);
+                                return true;
+                            }
+                            return false;
+                        } catch (error) {
+                            console.error(`Error resolving track ${trackQuery}:`, error.message);
+                            return false;
                         }
-                        return false;
-                    } catch (error) {
-                        console.error(`Error resolving track ${trackQuery}:`, error.message);
-                        return false;
+                    });
+                    
+                    const results = await Promise.all(batchPromises);
+                    queuedTracks += results.filter(r => r === true).length;
+                    
+                    // Small delay between batches to reduce memory pressure and rate limits
+                    if (i + batchSize < Math.min(tracksToQueue.length, maxTracks)) {
+                        await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
                     }
-                });
+                }
                 
-                const results = await Promise.all(batchPromises);
-                queuedTracks += results.filter(r => r === true).length;
-                
-                // Small delay between batches to reduce memory pressure and rate limits
-                if (i + batchSize < Math.min(tracksToQueue.length, maxTracks)) {
-                    await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+                // Notify user if playlist was truncated
+                if (tracksToQueue.length > maxTracks && isPlaylist) {
+                    console.warn(`[ SPOTIFY ] Playlist truncated: ${tracksToQueue.length} tracks requested, only ${maxTracks} queued (memory optimization)`);
                 }
             }
-            
-            // Notify user if playlist was truncated
-            // Log truncation warning if needed
-            if (tracksToQueue.length > maxTracks && isPlaylist) {
-                console.warn(`[ SPOTIFY ] Playlist truncated: ${tracksToQueue.length} tracks requested, only ${maxTracks} queued (memory optimization)`);
-            }
 
-            // Shuffle playlist tracks after adding them
+            // Shuffle playlist tracks after adding them (only if we have tracks)
             if (isPlaylist && player.queue.length > 1) {
                 // Fisher-Yates shuffle algorithm
                 for (let i = player.queue.length - 1; i > 0; i--) {
@@ -367,14 +365,35 @@ module.exports = {
                     [player.queue[i], player.queue[j]] = [player.queue[j], player.queue[i]];
                 }
             }
+            
+            // Ensure we have tracks before trying to play
+            if (queuedTracks === 0 && player.queue.length === 0 && !player.current) {
+                return sendErrorResponse(
+                    interaction,
+                    t.noResults.title + '\n\n' +
+                    t.noResults.message + '\n' +
+                    t.noResults.note,
+                    5000
+                );
+            }
 
+            // Wait for player to be connected
             let connectionAttempts = 0;
             while (!player.connected && connectionAttempts < 20) {
                 await new Promise(resolve => setTimeout(resolve, 100));
                 connectionAttempts++;
             }
 
-            if (!player.playing && !player.paused) player.play();
+            // Only start playback if we have tracks and player is not already playing
+            if (player.queue.length > 0 || player.current) {
+                if (!player.playing && !player.paused) {
+                    try {
+                        player.play();
+                    } catch (error) {
+                        console.error(`[ PLAY ] Error starting playback:`, error.message);
+                    }
+                }
+            }
 
             const embedColor = parseInt(config.embedColor?.replace('#', '') || '1db954', 16);
             let successMessage = (isPlaylist ? t.success.titlePlaylist : t.success.titleTrack) + '\n\n' +
