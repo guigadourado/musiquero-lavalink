@@ -275,9 +275,7 @@ async function initializePlayer(client) {
             components.push(controlsContainer);
             components.push(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large));
 
-            // Skip music card generation in low memory mode to save memory
-            const shouldGenerateCard = config.generateSongCard !== false && !config.lowMemoryMode;
-            
+            // Use the shouldGenerateCard variable already declared above
             if (shouldGenerateCard) {
                 const mediaGallery = new MediaGalleryBuilder()
                     .addItems(
