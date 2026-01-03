@@ -233,15 +233,49 @@ module.exports = {
                         continue;
                     }
                     if (attempts >= maxAttempts) {
-                        await nodeManager.refreshRiffy?.();
-                        await nodeManager.ensureNodeAvailable();
-                        player = client.riffy.createConnection({
-                            guildId: interaction.guildId,
-                            voiceChannel: userVoiceChannel,
-                            textChannel: interaction.channelId,
-                            deaf: true
-                        });
-                        break;
+                        // Final attempt after refresh
+                        try {
+                            await nodeManager.refreshRiffy?.();
+                            await nodeManager.ensureNodeAvailable();
+                            player = client.riffy.createConnection({
+                                guildId: interaction.guildId,
+                                voiceChannel: userVoiceChannel,
+                                textChannel: interaction.channelId,
+                                deaf: true
+                            });
+                            break;
+                        } catch (finalErr) {
+                            // If still failing with "No nodes are available", send user-friendly error
+                            const finalMsg = finalErr?.message || '';
+                            if (finalMsg.includes('No nodes are available')) {
+                                const nodeCount = nodeManager.getNodeCount();
+                                const totalCount = nodeManager.getTotalNodeCount();
+                                return sendErrorResponse(
+                                    interaction,
+                                    t.noNodes.title + '\n\n' +
+                                    t.noNodes.message
+                                        .replace('{connected}', nodeCount)
+                                        .replace('{total}', totalCount) + '\n' +
+                                    t.noNodes.note,
+                                    10000
+                                );
+                            }
+                            throw finalErr;
+                        }
+                    }
+                    // If error is "No nodes are available" and we've exhausted retries, send error message
+                    if (msg.includes('No nodes are available')) {
+                        const nodeCount = nodeManager.getNodeCount();
+                        const totalCount = nodeManager.getTotalNodeCount();
+                        return sendErrorResponse(
+                            interaction,
+                            t.noNodes.title + '\n\n' +
+                            t.noNodes.message
+                                .replace('{connected}', nodeCount)
+                                .replace('{total}', totalCount) + '\n' +
+                            t.noNodes.note,
+                            10000
+                        );
                     }
                     throw err;
                 }
@@ -494,14 +528,33 @@ module.exports = {
             }, 3000);
 
         } catch (error) {
-            const lang = await getLang(interaction.guildId).catch(() => ({ music: { play: { errors: {} } } }));
-            const t = lang.music?.play?.errors || {};
+            const lang = await getLang(interaction.guildId).catch(() => ({ music: { play: { errors: {}, noNodes: {} } } }));
+            const t = lang.music?.play || {};
+            const errorMsg = error?.message || '';
+            
+            // Check if error is "No nodes are available"
+            if (errorMsg.includes('No nodes are available')) {
+                const nodeManager = getLavalinkManager();
+                if (nodeManager) {
+                    const nodeCount = nodeManager.getNodeCount();
+                    const totalCount = nodeManager.getTotalNodeCount();
+                    return sendErrorResponse(
+                        interaction,
+                        (t.noNodes?.title || '## ❌ No Lavalink Nodes') + '\n\n' +
+                        (t.noNodes?.message || 'No Lavalink nodes are currently available ({connected}/{total} connected).')
+                            .replace('{connected}', nodeCount)
+                            .replace('{total}', totalCount) + '\n' +
+                        (t.noNodes?.note || 'The bot is attempting to reconnect. Please try again in a moment.'),
+                        10000
+                    );
+                }
+            }
             
             return handleCommandError(
                 interaction,
                 error,
                 'play',
-                (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while processing the request.\nPlease try again later.')
+                (t.errors?.title || '## ❌ Error') + '\n\n' + (t.errors?.message || 'An error occurred while processing the request.\nPlease try again later.')
             );
         }
     },
