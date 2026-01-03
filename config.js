@@ -72,6 +72,34 @@ module.exports = {
       host: "us-01.strixnodes.com",
       port: 8003,
       secure: false
+    },
+    {
+      name: "DEVINE PRO",
+      password: "Devine",
+      host: "top.kyrahost.xyz",
+      port: 2010,
+      secure: false
+    },
+    {
+      name: "D-Radio",
+      password: "KaAs",
+      host: "ishaan.hidencloud.com",
+      port: 24590,
+      secure: false
+    },
+    {
+      name: "prmgvyt",
+      password: "prmgvyt",
+      host: "217.160.125.127",
+      port: 14845,
+      secure: false
+    },
+    {
+      name: "Lunarnode",
+      password: "youshallnotpass",
+      host: "in1.lunarnode.xyz",
+      port: 2993,
+      secure: false
     }
     // The bot will automatically use the first available node
     // Automatic failover to next node if one goes down
