@@ -380,6 +380,8 @@ async function initializePlayer(client) {
 
     client.riffy.on("playerDisconnect", async (player) => {
         const guildId = player.guildId;
+        const lang = getLangSync();
+        console.warn(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.yellow}Player disconnected for guild ${guildId}${colors.reset}`);
         
         if (client.statusManager) {
             await client.statusManager.onPlayerDisconnect(guildId).catch(() => {});
@@ -392,6 +394,55 @@ async function initializePlayer(client) {
         }
         nowPlayingMessages.delete(guildId);
         await cleanupTrackMessages(client, player);
+    });
+
+    // Handle player connection errors
+    client.riffy.on("playerError", async (player, error) => {
+        const guildId = player?.guildId || 'unknown';
+        const lang = getLangSync();
+        const errorMsg = error?.message || 'Unknown error';
+        
+        console.error(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.red}Player error for guild ${guildId}: ${errorMsg}${colors.reset}`);
+        
+        // Try to recover by reconnecting the player
+        try {
+            if (player && !player.destroyed) {
+                const guild = client.guilds.cache.get(guildId);
+                if (guild) {
+                    const voiceChannel = guild.channels.cache.get(player.voiceChannel);
+                    if (voiceChannel) {
+                        // Attempt to reconnect
+                        const member = guild.members.me;
+                        if (member && member.voice.channel?.id !== voiceChannel.id) {
+                            // Bot is not in the voice channel, try to reconnect
+                            try {
+                                await player.connect();
+                            } catch (connectError) {
+                                console.warn(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.yellow}Failed to reconnect player for guild ${guildId}: ${connectError.message}${colors.reset}`);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (recoveryError) {
+            console.warn(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.yellow}Error during player recovery: ${recoveryError.message}${colors.reset}`);
+        }
+    });
+
+    // Handle WebSocket connection errors
+    client.riffy.on("socketError", (node, error) => {
+        const lang = getLangSync();
+        const errorMsg = error?.message || 'Unknown error';
+        console.error(`${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.red}Socket error on node ${node?.name || 'unknown'}: ${errorMsg}${colors.reset}`);
+        
+        // The node manager should handle reconnection automatically
+    });
+
+    // Handle player connection issues
+    client.riffy.on("playerConnect", (player) => {
+        const guildId = player?.guildId || 'unknown';
+        const lang = getLangSync();
+        console.log(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.green}Player connected for guild ${guildId}${colors.reset}`);
     });
 
     client.riffy.on("queueEnd", async (player) => {
