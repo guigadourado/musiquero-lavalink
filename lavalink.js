@@ -1,15 +1,23 @@
+/**
+ * Lavalink node manager – loads config nodes, runs Riffy (Lavalink v4),
+ * health checks, reconnect loop, and event handling.
+ */
 const { Riffy } = require("riffy");
 const config = require("./config.js");
-const colors = require('./UI/colors/colors');
-const axios = require('axios');
+const colors = require("./UI/colors/colors");
+const axios = require("axios");
 
 let getLangSync;
 try {
-    const langLoader = require('./utils/languageLoader.js');
+    const langLoader = require("./utils/languageLoader.js");
     getLangSync = langLoader.getLangSync;
 } catch (e) {
     getLangSync = () => ({ console: {} });
 }
+
+// -----------------------------------------------------------------------------
+// LavalinkNodeManager
+// -----------------------------------------------------------------------------
 
 class LavalinkNodeManager {
     constructor(client) {
@@ -18,6 +26,7 @@ class LavalinkNodeManager {
         this.nodeStatus = new Map();
         this.healthCheckInterval = null;
         this.connectLoopInterval = null;
+        this.reconnectInterval = null;
         this.riffy = null;
         this.initialized = false;
         this.connectionPromise = null;
@@ -25,6 +34,8 @@ class LavalinkNodeManager {
         
         this.initializeNodes();
     }
+
+    // --- Node config & Riffy setup ---
 
     initializeNodes() {
         if (config.nodes && Array.isArray(config.nodes) && config.nodes.length > 0) {
@@ -53,7 +64,7 @@ class LavalinkNodeManager {
         }
 
         const lang = getLangSync();
-        console.log(`${colors.cyan}[ LAVALINK ][INIT ]${colors.reset} ${lang.console?.lavalink?.nodesConfigured?.replace('{count}', this.nodes.size) || `Nodes configured: ${this.nodes.size}`}`);
+        console.log(`${colors.cyan}[ LAVALINK ][INIT]${colors.reset} ${lang.console?.lavalink?.nodesConfigured?.replace('{count}', this.nodes.size) || `Nodes configured: ${this.nodes.size}`}`);
     }
 
     async initializeRiffy() {
@@ -87,7 +98,6 @@ class LavalinkNodeManager {
             const lang = getLangSync();
             console.log(`${colors.cyan}[ LAVALINK ][Riffy]${colors.reset} ${colors.green}${lang.console?.lavalink?.riffyInitialized?.replace('{count}', nodesToUse.length) || `Initialized with ${nodesToUse.length} node(s)`}${colors.reset}`);
 
-         
             setTimeout(() => {
                 try {
                     let keys = [];
@@ -100,7 +110,7 @@ class LavalinkNodeManager {
                     }
                     const lang = getLangSync();
                     console.log(`${colors.cyan}[ LAVALINK ][Riffy]${colors.reset} ${lang.console?.lavalink?.nodeKeys || 'Node keys:'}`, keys);
-                } catch (_) {}
+                } catch (_) { /* no-op */ }
             }, 2000);
 
             return this.riffy;
@@ -143,9 +153,11 @@ class LavalinkNodeManager {
                     if (tryMatch(rnode, nodeConfig)) return rnode;
                 }
             }
-        } catch (_) {}
+        } catch (_) { /* no-op */ }
         return null;
     }
+
+    // --- Connection & health ---
 
     async attemptConnectNode(nodeId) {
         const nodeCfg = this.nodes.get(nodeId);
@@ -164,7 +176,6 @@ class LavalinkNodeManager {
             }
         }
 
-  
         try {
             await this.refreshRiffy();
             return true;
@@ -173,7 +184,6 @@ class LavalinkNodeManager {
         }
     }
 
-  
     async forceConnectAllNodes() {
         if (!this.riffy) return false;
         let attempted = false;
@@ -224,9 +234,7 @@ class LavalinkNodeManager {
             try {
                 if (this.hasConnectedNodes()) return;
                 await this.reconnectNodesNow(5000);
-            } catch (_) {
-            
-            }
+            } catch (_) { /* no-op */ }
         }, 10000); 
     }
 
@@ -237,7 +245,6 @@ class LavalinkNodeManager {
         const start = Date.now();
         while (Date.now() - start < maxWaitTime) {
             if (this.hasConnectedNodes()) return true;
-       
             const eventConnected = await Promise.race([
                 this.waitForNodeConnectEvent(800),
                 new Promise(res => setTimeout(() => res(false), 800))
@@ -250,10 +257,7 @@ class LavalinkNodeManager {
 
     async refreshRiffy() {
         try {
-            if (this.hasConnectedNodes()) {
-     
-                return true;
-            }
+            if (this.hasConnectedNodes()) return true;
             if (this.riffy && typeof this.riffy.destroy === 'function') {
                 this.riffy.destroy();
             }
@@ -268,6 +272,8 @@ class LavalinkNodeManager {
             return false;
         }
     }
+
+    // --- Riffy event listeners ---
 
     setupEventListeners() {
         this.riffy.on('nodeConnect', (node) => {
@@ -313,14 +319,11 @@ class LavalinkNodeManager {
             if (nodeId) {
                 const status = this.nodeStatus.get(nodeId) || {};
                 const msg = error?.message || '';
-                
-         
                 if (msg.includes('player.restart is not a function') || msg.includes('restart is not a function')) {
                     const lang = getLangSync();
                     console.warn(`${colors.cyan}[ LAVALINK ][NODE ]${colors.reset} ${colors.yellow}Ignoring Riffy reconnect bug for ${node.name} - node will reconnect automatically${colors.reset}`);
-                    return; 
+                    return;
                 }
-                
                 this.nodeStatus.set(nodeId, {
                     ...status,
                     online: false,
@@ -329,7 +332,6 @@ class LavalinkNodeManager {
                 });
                 const availableCount = this.getConnectedNodeCount();
                 const totalCount = this.getTotalNodeCount();
-                
                 if (msg.includes('after 3 attempts')) {
                     const lang = getLangSync();
                     console.warn(`${colors.cyan}[ LAVALINK ][NODE ]${colors.reset} ${colors.yellow}${lang.console?.lavalink?.retryLimitReported?.replace('{name}', node.name) || `Retry limit reported by ${node.name}; reconnect loop continues`}${colors.reset}`);
@@ -342,6 +344,8 @@ class LavalinkNodeManager {
             }
         });
     }
+
+    // --- Node lookup & counts ---
 
     findNodeIdByName(nodeName) {
         for (const [nodeId, node] of this.nodes.entries()) {
@@ -390,9 +394,7 @@ class LavalinkNodeManager {
                     }
                 }
             }
-        } catch (error) {
-        
-        }
+        } catch (_) { /* no-op */ }
 
         if (count === 0) {
             for (const status of this.nodeStatus.values()) {
@@ -406,7 +408,6 @@ class LavalinkNodeManager {
         return this.nodes.size;
     }
 
-
     getNodeCount() {
         return this.getConnectedNodeCount();
     }
@@ -414,6 +415,8 @@ class LavalinkNodeManager {
     hasConnectedNodes() {
         return this.getConnectedNodeCount() > 0;
     }
+
+    // --- Wait / ensure available ---
 
     async waitForNodeConnectEvent(timeout = 8000) {
         return new Promise((resolve) => {
@@ -481,7 +484,6 @@ class LavalinkNodeManager {
     }
 
     async ensureNodeAvailable() {
-    
         if (this.hasConnectedNodes()) return true;
 
         const lang = getLangSync();
@@ -499,8 +501,9 @@ class LavalinkNodeManager {
         throw new Error('No Lavalink nodes are currently available. Please check your node configuration.');
     }
 
+    // --- Health monitoring & status ---
+
     startHealthMonitoring() {
-   
         this.healthCheckInterval = setInterval(async () => {
             const connected = this.getConnectedNodeCount();
             const total = this.getTotalNodeCount();
@@ -509,16 +512,15 @@ class LavalinkNodeManager {
                 console.log(`${colors.cyan}[ LAVALINK ][STATUS]${colors.reset} ${colors.yellow}${lang.console?.lavalink?.noNodesConnected?.replace('{connected}', connected).replace('{total}', total) || `No nodes connected (${connected}/${total}) — attempting reconnect...`}${colors.reset}`);
                 await this.reconnectNodesNow(5000);
             }
-        }, 60000); 
+        }, 60000);
 
-  
         this.reconnectInterval = setInterval(async () => {
             const connected = this.getConnectedNodeCount();
             const total = this.getTotalNodeCount();
             if (connected === 0 && total > 0) {
                 await this.reconnectNodesNow(5000);
             }
-        }, 30000); 
+        }, 30000);
 
         // Initial status log
         setTimeout(() => {
@@ -529,6 +531,7 @@ class LavalinkNodeManager {
         }, 5000);
     }
 
+    /** Returns { total, online, offline, nodes[] } for status commands. */
     getNodeStatus() {
         const status = {
             total: this.nodes.size,
@@ -563,6 +566,7 @@ class LavalinkNodeManager {
         return status;
     }
 
+    /** True if the given node id is connected in Riffy or marked online in nodeStatus. */
     isNodeConnected(nodeId) {
         const node = this.nodes.get(nodeId);
         if (!node) return false;
@@ -594,7 +598,7 @@ class LavalinkNodeManager {
                         }
                     }
                 }
-            } catch (_) {}
+            } catch (_) { /* no-op */ }
         }
 
         // Fallback to nodeStatus
@@ -603,6 +607,8 @@ class LavalinkNodeManager {
 
         return false;
     }
+
+    // --- Lifecycle ---
 
     init(userId) {
         if (this.riffy) {
@@ -619,6 +625,10 @@ class LavalinkNodeManager {
             clearInterval(this.connectLoopInterval);
             this.connectLoopInterval = null;
         }
+        if (this.reconnectInterval) {
+            clearInterval(this.reconnectInterval);
+            this.reconnectInterval = null;
+        }
         if (this.riffy) {
             this.riffy.destroy();
             this.riffy = null;
@@ -626,6 +636,10 @@ class LavalinkNodeManager {
         this.initialized = false;
     }
 }
+
+// -----------------------------------------------------------------------------
+// Singleton & exports
+// -----------------------------------------------------------------------------
 
 let nodeManagerInstance = null;
 

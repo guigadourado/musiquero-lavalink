@@ -51,19 +51,6 @@ process.on('unhandledRejection', (error) => {
     console.error(lang.console?.bot?.unhandledRejection || 'Unhandled Rejection:', error);
 });
 
-process.on('uncaughtException', (error) => {
-    const lang = getLangSync();
-    if (error && error.message && (
-        error.message.includes('Cannot read properties of null') ||
-        error.message.includes('track.info') ||
-        error.message.includes('thumbnail')
-    )) {
-        console.warn(lang.console?.bot?.riffyThumbnailError?.replace('{message}', error.message) || `[ Riffy ] Ignoring thumbnail error: ${error.message}`);
-        return;
-    }
-    console.error(lang.console?.bot?.uncaughtException || 'Uncaught Exception:', error);
-});
-
 initializePlayer(client).catch(error => {
     const lang = getLangSync();
     console.error(`${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.red}${lang.console?.bot?.lavalinkError?.replace('{message}', error.message) || `Error initializing player: ${error.message}`}${colors.reset}`);
@@ -97,10 +84,9 @@ client.on("clientReady", () => {
             }
         }, 3000);
     } else if (client.riffy) {
-    client.riffy.init(client.user.id);
+        client.riffy.init(client.user.id);
     }
 });
-client.config = config;
 
 fs.readdir("./events", (_err, files) => {
   files.forEach((file) => {
@@ -327,10 +313,10 @@ const gracefulShutdown = async (signal) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Handle uncaught exceptions more gracefully
+// Single uncaughtException handler: filter known Riffy/thumbnail noise, log rest without exiting
 process.on('uncaughtException', (error) => {
     const lang = getLangSync();
-    if (error && error.message && (
+    if (error?.message && (
         error.message.includes('Cannot read properties of null') ||
         error.message.includes('track.info') ||
         error.message.includes('thumbnail')
@@ -338,12 +324,7 @@ process.on('uncaughtException', (error) => {
         console.warn(lang.console?.bot?.riffyThumbnailError?.replace('{message}', error.message) || `[ Riffy ] Ignoring thumbnail error: ${error.message}`);
         return;
     }
-    
-    // For critical errors, log and attempt to continue
     console.error(`${colors.cyan}[ CRITICAL ]${colors.reset} ${colors.red}Uncaught Exception:${colors.reset}`, error);
-    
-    // Don't exit immediately - let the process manager handle it
-    // This prevents Render.com from constantly restarting
 });
 
 client.on("raw", (d) => {

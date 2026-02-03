@@ -3,9 +3,12 @@
   "version": "1.4",
   "description": "Advanced Lavalink Music Bot",
   "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.88",
-    "axios": "^1.13.2",
+    "axios": "^1.13.4",
     "discord.js": "^14.25.1",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",

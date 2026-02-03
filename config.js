@@ -1,16 +1,17 @@
+// Prefer env vars for secrets (see .env.example). Fallbacks keep existing behavior.
+require("dotenv").config();
 
+const spotifyClientId = process.env.SPOTIFY_CLIENT_ID || "d92baed9605a45a39ed7c2a2d960b1c1";
+const spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET || "e9b29f6739de4315bc03b6d8a8e93b03";
 
 module.exports = {
-  TOKEN: "",
+  TOKEN: process.env.TOKEN || "",
   language: "en",
-  ownerID: ["1004206704994566164", ""], 
-  mongodbUri : "mongodb+srv://shiva:shiva@musicbotyt.ouljywv.mongodb.net/?retryWrites=true&w=majority",
+  ownerID: ["1004206704994566164", ""],
+  mongodbUri: process.env.MONGODB_URI || "mongodb+srv://shiva:shiva@musicbotyt.ouljywv.mongodb.net/?retryWrites=true&w=majority",
   // Spotify credentials - supports multiple sets for load balancing and fallback
   spotifyCredentials: [
-    {
-      clientId: "d92baed9605a45a39ed7c2a2d960b1c1",
-      clientSecret: "e9b29f6739de4315bc03b6d8a8e93b03"
-    },
+    { clientId: spotifyClientId, clientSecret: spotifyClientSecret },
     {
       clientId: "85aab1d51a174aad9eed6d7989f530e6",
       clientSecret: "b2ad05aa725e434c88776a1be8eab6c2"
@@ -20,9 +21,9 @@ module.exports = {
       clientSecret: "199a619d22dd4e55a4a2c1a7a3d70e63"
     }
   ],
-  // Legacy support - uses first credential set
-  spotifyClientId : "d92baed9605a45a39ed7c2a2d960b1c1",
-  spotifyClientSecret : "e9b29f6739de4315bc03b6d8a8e93b03",
+  // Legacy support - uses first credential set (from env or above)
+  spotifyClientId,
+  spotifyClientSecret,
   setupFilePath: './commands/setup.json',
   commandsDir: './commands',  
   embedColor: "#1db954",
@@ -44,8 +45,9 @@ module.exports = {
   // Music commands channel: Music commands can only be used in this channel
   // Set to null or empty string to allow music commands in any channel
   musicChannelId: "1449954292441288825",  // Channel ID - music commands restricted to this channel 
+  // Lavalink v4 nodes; see docs/LAVALINK_NODES.md for thread-sourced list
   nodes: [
-     {
+    {
       name: "AYANO LAVA",
       password: "AYANO",
       host: "194.58.66.44",
@@ -101,6 +103,9 @@ module.exports = {
       port: 2993,
       secure: false
     }
+    // More nodes from thread: see docs/LAVALINK_NODES.md
+    // Yumi (Ariato!) - temporarily down, uncomment when host is back:
+    // { name: "Yumi", password: "Sakura", host: "TBD", port: 2333, secure: false },
     // The bot will automatically use the first available node
     // Automatic failover to next node if one goes down
   ]
