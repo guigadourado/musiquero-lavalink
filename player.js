@@ -368,7 +368,8 @@ async function initializePlayer(client) {
         const channel = client.channels.cache.get(player.textChannel);
         if (channel) {
             const settings = autoplayCollection ? await autoplayCollection.findOne({ guildId: String(player.guildId) }).catch(() => null) : null;
-            const hasNextTrack = player.queue.length > 0 || player.loop === "queue" || player.loop === "track" || settings?.autoplay;
+            const autoplayOn = settings?.autoplay !== false;
+            const hasNextTrack = player.queue.length > 0 || player.loop === "queue" || player.loop === "track" || autoplayOn;
             
             if (!hasNextTrack) {
                 await cleanupTrackMessages(client, player);
@@ -453,9 +454,10 @@ async function initializePlayer(client) {
             const settings = autoplayCollection
                 ? await autoplayCollection.findOne({ guildId: guildIdStr }).catch(() => null)
                 : null;
-            const is24_7 = settings?.twentyfourseven;
+            const autoplayOn = settings?.autoplay !== false;
+            const is24_7 = settings?.twentyfourseven !== false;
 
-            if (settings?.autoplay) {
+            if (autoplayOn) {
                 if (channel) await cleanupPreviousTrackMessages(channel, guildId);
 
                 const nextTrack = await player.autoplay(player);
@@ -492,9 +494,10 @@ async function initializePlayer(client) {
             await cleanupTrackMessages(client, player);
             nowPlayingMessages.delete(guildId);
             const settings = autoplayCollection ? await autoplayCollection.findOne({ guildId: guildIdStr }).catch(() => null) : null;
+            const is24_7 = settings?.twentyfourseven !== false;
             const lang = await getLang(guildId).catch(() => ({ console: { player: {} } }));
             const t = lang.console?.player || {};
-            if (!settings?.twentyfourseven) {
+            if (!is24_7) {
                 player.destroy();
                 if (channel) { const msg = await channel.send(t.queueEnd?.queueEmpty || "👾 **Queue Empty! Disconnecting...**"); setTimeout(() => msg.delete().catch(() => {}), 5000); }
             }
