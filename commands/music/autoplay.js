@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { autoplayCollection } = require('../../mongodb.js');
+const { setAutoplaySettings } = require('../../mongodb.js');
 const { sendSuccessResponse, handleCommandError } = require('../../utils/responseHandler.js');
 const { getLang } = require('../../utils/languageLoader');
 
@@ -24,23 +24,7 @@ module.exports = {
             const enable = interaction.options.getBoolean('enable');
             const guildId = String(interaction.guild.id);
 
-            if (!autoplayCollection) {
-                const reply = await interaction.editReply('## ❌ Database not available\n\nAutoplay and 24/7 settings require MongoDB. Please try again later.');
-                setTimeout(() => reply.delete().catch(() => {}), 5000);
-                return reply;
-            }
-            try {
-                await autoplayCollection.updateOne(
-                    { guildId },
-                    { $set: { autoplay: enable } },
-                    { upsert: true }
-                );
-            } catch (dbErr) {
-                console.error('[autoplay] MongoDB update failed:', dbErr?.message || dbErr);
-                const reply = await interaction.editReply('## ❌ Database unavailable\n\nCould not save settings. Make sure MongoDB is connected and try again.');
-                setTimeout(() => reply.delete().catch(() => {}), 5000);
-                return reply;
-            }
+            await setAutoplaySettings(guildId, { autoplay: enable });
 
             const content = enable
                 ? (t.enabled?.title || '## ✅ Autoplay Enabled') + '\n\n' + (t.enabled?.message || 'Autoplay has been **enabled** for this server.') + '\n\n' + (t.enabled?.note || '🎵 The bot will automatically play similar songs when the queue ends.')

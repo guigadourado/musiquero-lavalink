@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { autoplayCollection } = require('../../mongodb.js');
+const { getAutoplaySettings } = require('../../mongodb.js');
 const { cleanupTrackMessages } = require('../../player.js');
 const { checkVoiceChannel, checkMusicChannel } = require('../../utils/voiceChannelCheck.js');
 const { sendSuccessResponse, handleCommandError } = require('../../utils/responseHandler.js');
@@ -38,8 +38,8 @@ module.exports = {
                 return reply;
             }
 
-            const settings = autoplayCollection ? await autoplayCollection.findOne({ guildId: String(interaction.guildId) }).catch(() => null) : null;
-            const is24_7 = settings?.twentyfourseven !== false;
+            const settings = await getAutoplaySettings(interaction.guildId).catch(() => ({ twentyfourseven: true }));
+            const is24_7 = settings.twentyfourseven;
 
             await cleanupTrackMessages(client, player);
 

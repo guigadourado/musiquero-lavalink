@@ -60,6 +60,44 @@ const playlistCollection = db ? db.collection("SongPlayLists") : null;
 const autoplayCollection = db ? db.collection("AutoplaySettings") : null;
 const languageCollection = db ? db.collection("GuildLanguages") : null;
 
+// In-memory fallback for autoplay/24/7 when MongoDB is not available (default: both true)
+const autoplayMemory = new Map();
+
+async function getAutoplaySettings(guildId) {
+    const id = String(guildId);
+    if (autoplayCollection) {
+        try {
+            const doc = await autoplayCollection.findOne({ guildId: id }).catch(() => null);
+            return {
+                autoplay: doc?.autoplay !== false,
+                twentyfourseven: doc?.twentyfourseven !== false,
+            };
+        } catch (_) {}
+    }
+    const mem = autoplayMemory.get(id);
+    return {
+        autoplay: mem?.autoplay !== false,
+        twentyfourseven: mem?.twentyfourseven !== false,
+    };
+}
+
+async function setAutoplaySettings(guildId, updates) {
+    const id = String(guildId);
+    const mem = autoplayMemory.get(id) || { autoplay: true, twentyfourseven: true };
+    if (updates.autoplay !== undefined) mem.autoplay = updates.autoplay;
+    if (updates.twentyfourseven !== undefined) mem.twentyfourseven = updates.twentyfourseven;
+    autoplayMemory.set(id, mem);
+    if (autoplayCollection) {
+        try {
+            await autoplayCollection.updateOne(
+                { guildId: id },
+                { $set: mem },
+                { upsert: true }
+            );
+        } catch (_) {}
+    }
+}
+
 function getLanguageCollection() {
     return languageCollection;
 }
@@ -68,5 +106,7 @@ module.exports = {
     connectToDatabase,
     playlistCollection,
     autoplayCollection,
+    getAutoplaySettings,
+    setAutoplaySettings,
     getLanguageCollection,
 };

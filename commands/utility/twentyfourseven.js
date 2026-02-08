@@ -1,7 +1,5 @@
 const { SlashCommandBuilder, ContainerBuilder, MessageFlags } = require('discord.js');
-const config = require('../../config.js');
-const musicIcons = require('../../UI/icons/musicicons.js');
-const { autoplayCollection } = require('../../mongodb.js');
+const { setAutoplaySettings } = require('../../mongodb.js');
 const { getLang } = require('../../utils/languageLoader.js');
 const { handleCommandError } = require('../../utils/responseHandler.js');
 
@@ -43,35 +41,7 @@ module.exports = {
             const enable = interaction.options.getBoolean('enable');
             const guildId = String(interaction.guild.id);
 
-            if (!autoplayCollection) {
-                const errorContainer = new ContainerBuilder()
-                    .setAccentColor(0xff0000)
-                    .addTextDisplayComponents(
-                        (textDisplay) => textDisplay.setContent(
-                            `${accessDenied.title}\n\nDatabase not available. 24/7 mode requires MongoDB.`
-                        )
-                    );
-                const reply = await interaction.editReply({ components: [errorContainer], flags: MessageFlags.IsComponentsV2 });
-                setTimeout(() => reply.delete().catch(() => {}), 5000);
-                return reply;
-            }
-            try {
-                await autoplayCollection.updateOne(
-                    { guildId },
-                    { $set: { twentyfourseven: enable } },
-                    { upsert: true }
-                );
-            } catch (dbErr) {
-                console.error('[247] MongoDB update failed:', dbErr?.message || dbErr);
-                const errorContainer = new ContainerBuilder()
-                    .setAccentColor(0xff0000)
-                    .addTextDisplayComponents(
-                        (textDisplay) => textDisplay.setContent('## ❌ Database unavailable\n\nCould not save settings. Make sure MongoDB is connected and try again.')
-                    );
-                const reply = await interaction.editReply({ components: [errorContainer], flags: MessageFlags.IsComponentsV2 });
-                setTimeout(() => reply.delete().catch(() => {}), 5000);
-                return reply;
-            }
+            await setAutoplaySettings(guildId, { twentyfourseven: enable });
 
             const embedColor = parseInt((enable ? '#00ff00' : '#ff0000').replace('#', ''), 16);
             const components = [];
