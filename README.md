@@ -240,6 +240,16 @@ nodes: [
 ]
 ```
 
+### Push to GitHub (optional)
+
+To allow automated pushes (e.g. from scripts or CI) without typing credentials:
+
+1. Create a [Personal Access Token](https://github.com/settings/tokens) with `repo` scope.
+2. Add to your `.env`: `GITHUB_TOKEN=ghp_your_token_here`
+3. Push using the script: `./scripts/push.sh` (pushes the current branch).
+
+Your token stays in `.env` (gitignored) and is never committed.
+
 ---
 
 ## 🎮 Usage
