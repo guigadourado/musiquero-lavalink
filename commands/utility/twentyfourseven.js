@@ -40,8 +40,21 @@ module.exports = {
             }
 
             const enable = interaction.options.getBoolean('enable');
-            const guildId = interaction.guild.id;
+            const guildId = String(interaction.guild.id);
 
+            if (!autoplayCollection) {
+                const errorContainer = new ContainerBuilder()
+                    .setAccentColor(0xff0000)
+                    .addTextDisplayComponents(
+                        (textDisplay) => textDisplay.setContent(
+                            `${lang.utility.twentyfourseven.accessDenied.title}\n\n` +
+                            `Database not available. 24/7 mode requires MongoDB.`
+                        )
+                    );
+                const reply = await interaction.editReply({ components: [errorContainer], flags: MessageFlags.IsComponentsV2 });
+                setTimeout(() => reply.delete().catch(() => {}), 5000);
+                return reply;
+            }
             await autoplayCollection.updateOne(
                 { guildId },
                 { $set: { twentyfourseven: enable } },

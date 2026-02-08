@@ -38,7 +38,7 @@ module.exports = {
                 return reply;
             }
 
-            const settings = await autoplayCollection.findOne({ guildId: interaction.guildId });
+            const settings = autoplayCollection ? await autoplayCollection.findOne({ guildId: String(interaction.guildId) }).catch(() => null) : null;
             const is24_7 = settings?.twentyfourseven;
 
             await cleanupTrackMessages(client, player);

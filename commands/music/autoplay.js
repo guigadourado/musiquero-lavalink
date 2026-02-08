@@ -31,8 +31,13 @@ module.exports = {
             const t = lang.music.autoplay;
 
             const enable = interaction.options.getBoolean('enable');
-            const guildId = interaction.guild.id;
+            const guildId = String(interaction.guild.id);
 
+            if (!autoplayCollection) {
+                const reply = await interaction.editReply('## ❌ Database not available\n\nAutoplay and 24/7 settings require MongoDB. Please try again later.');
+                setTimeout(() => reply.delete().catch(() => {}), 5000);
+                return reply;
+            }
             await autoplayCollection.updateOne(
                 { guildId },
                 { $set: { autoplay: enable } },

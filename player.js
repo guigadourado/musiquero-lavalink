@@ -367,7 +367,7 @@ async function initializePlayer(client) {
         
         const channel = client.channels.cache.get(player.textChannel);
         if (channel) {
-            const settings = await autoplayCollection.findOne({ guildId }).catch(() => null);
+            const settings = autoplayCollection ? await autoplayCollection.findOne({ guildId: String(player.guildId) }).catch(() => null) : null;
             const hasNextTrack = player.queue.length > 0 || player.loop === "queue" || player.loop === "track" || settings?.autoplay;
             
             if (!hasNextTrack) {
@@ -448,14 +448,16 @@ async function initializePlayer(client) {
     client.riffy.on("queueEnd", async (player) => {
         const channel = client.channels.cache.get(player.textChannel);
         const guildId = player.guildId;
-    
+        const guildIdStr = String(guildId);
         try {
-            const settings = await autoplayCollection.findOne({ guildId });
+            const settings = autoplayCollection
+                ? await autoplayCollection.findOne({ guildId: guildIdStr }).catch(() => null)
+                : null;
             const is24_7 = settings?.twentyfourseven;
-    
+
             if (settings?.autoplay) {
-                await cleanupPreviousTrackMessages(channel, guildId);
-                
+                if (channel) await cleanupPreviousTrackMessages(channel, guildId);
+
                 const nextTrack = await player.autoplay(player);
 
                 if (!nextTrack) {
@@ -465,11 +467,9 @@ async function initializePlayer(client) {
                     const t = lang.console?.player || {};
                     if (!is24_7) {
                         player.destroy();
-                        const msg = await channel.send(t.queueEnd?.noMoreAutoplay || "⚠️ **No more tracks to autoplay. Disconnecting...**");
-                        setTimeout(() => msg.delete().catch(() => {}), 5000);
+                        if (channel) { const msg = await channel.send(t.queueEnd?.noMoreAutoplay || "⚠️ **No more tracks to autoplay. Disconnecting...**"); setTimeout(() => msg.delete().catch(() => {}), 5000); }
                     } else {
-                        const msg = await channel.send(t.queueEnd?.twentyfoursevenEmpty || "🔄 **24/7 Mode: Bot will stay in voice channel. Queue is empty.**");
-                        setTimeout(() => msg.delete().catch(() => {}), 5000);
+                        if (channel) { const msg = await channel.send(t.queueEnd?.twentyfoursevenEmpty || "🔄 **24/7 Mode: Bot will stay in voice channel. Queue is empty.**"); setTimeout(() => msg.delete().catch(() => {}), 5000); }
                     }
                 }
             } else {
@@ -481,11 +481,9 @@ async function initializePlayer(client) {
                 console.log(langSync.console?.player?.autoplayDisabled?.replace('{guildId}', guildId) || `Autoplay is disabled for guild: ${guildId}`);
                 if (!is24_7) {
                     player.destroy();
-                    const msg = await channel.send(t.queueEnd?.queueEndedAutoplayDisabled || "🎶 **Queue has ended. Autoplay is disabled.**");
-                    setTimeout(() => msg.delete().catch(() => {}), 5000);
+                    if (channel) { const msg = await channel.send(t.queueEnd?.queueEndedAutoplayDisabled || "🎶 **Queue has ended. Autoplay is disabled.**"); setTimeout(() => msg.delete().catch(() => {}), 5000); }
                 } else {
-                    const msg = await channel.send(t.queueEnd?.twentyfoursevenEmpty || "🔄 **24/7 Mode: Bot will stay in voice channel. Queue is empty.**");
-                    setTimeout(() => msg.delete().catch(() => {}), 5000);
+                    if (channel) { const msg = await channel.send(t.queueEnd?.twentyfoursevenEmpty || "🔄 **24/7 Mode: Bot will stay in voice channel. Queue is empty.**"); setTimeout(() => msg.delete().catch(() => {}), 5000); }
                 }
             }
         } catch (error) {
@@ -493,13 +491,12 @@ async function initializePlayer(client) {
             console.error(langSync.console?.player?.errorQueueEnd || "Error handling queue end:", error);
             await cleanupTrackMessages(client, player);
             nowPlayingMessages.delete(guildId);
-            const settings = await autoplayCollection.findOne({ guildId });
+            const settings = autoplayCollection ? await autoplayCollection.findOne({ guildId: guildIdStr }).catch(() => null) : null;
             const lang = await getLang(guildId).catch(() => ({ console: { player: {} } }));
             const t = lang.console?.player || {};
             if (!settings?.twentyfourseven) {
                 player.destroy();
-                const msg = await channel.send(t.queueEnd?.queueEmpty || "👾 **Queue Empty! Disconnecting...**");
-                setTimeout(() => msg.delete().catch(() => {}), 5000);
+                if (channel) { const msg = await channel.send(t.queueEnd?.queueEmpty || "👾 **Queue Empty! Disconnecting...**"); setTimeout(() => msg.delete().catch(() => {}), 5000); }
             }
         }
     });
