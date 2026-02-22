@@ -102,10 +102,64 @@ module.exports = {
       host: "in1.lunarnode.xyz",
       port: 2993,
       secure: false
+    },
+    {
+      name: "Yumi Singapore",
+      password: "Sakura",
+      host: "sgp.lavalink.yumistack.net",
+      port: 2333,
+      secure: false
+    },
+    {
+      name: "Yumi Canada",
+      password: "Sakura",
+      host: "ca.lavalink.yumistack.net",
+      port: 2333,
+      secure: false
+    },
+    {
+      name: "Serenetia V4",
+      password: "https://dsc.gg/ajidevserver",
+      host: "lavalinkv4.serenetia.com",
+      port: 443,
+      secure: true
+    },
+    {
+      name: "Serenetia V3",
+      password: "https://dsc.gg/ajidevserver",
+      host: "lavalinkv3.serenetia.com",
+      port: 443,
+      secure: true
+    },
+    {
+      name: "Serenetia V3/V4",
+      password: "https://dsc.gg/ajidevserver",
+      host: "lavalink.serenetia.com",
+      port: 443,
+      secure: true
+    },
+    {
+      name: "Jirayu",
+      password: "youshallnotpass",
+      host: "lavalink.jirayu.net",
+      port: 443,
+      secure: true
+    },
+    {
+      name: "Millohost",
+      password: "https://discord.gg/mjS5J2K3ep",
+      host: "lava-v3.millohost.my.id",
+      port: 443,
+      secure: true
+    },
+    {
+      name: "Rive",
+      password: "youshallnotpass",
+      host: "lavalink.rive.wtf",
+      port: 443,
+      secure: true
     }
     // More nodes from thread: see docs/LAVALINK_NODES.md
-    // Yumi (Ariato!) - temporarily down, uncomment when host is back:
-    // { name: "Yumi", password: "Sakura", host: "TBD", port: 2333, secure: false },
     // The bot will automatically use the first available node
     // Automatic failover to next node if one goes down
   ]

@@ -65,27 +65,8 @@ Extracted from the support/Discord message thread. Use in `config.js` under `nod
 
 ---
 
-### D-Radio
-- **Source:** ! Mart — 28/12/25, 27/01/26
-- **Location:** Paris 🇫🇷
-- **Version:** Lavalink V4.1.2
-
-```json
-{
-  "name": "D-Radio",
-  "password": "KaAs",
-  "host": "ishaan.hidencloud.com",
-  "port": 24590,
-  "secure": false
-}
-```
-
-**Platforms:** YouTube, Spotify, SoundCloud, MP3 streams (radio).
-
----
-
 ### Danbot (Harmonix)
-- **Source:** ! Producer — 14/01/26
+- **Source:** ! Mart — 07/02/26
 - **Status:** Operational
 - **Version:** Lavalink V4
 
@@ -103,26 +84,124 @@ Extracted from the support/Discord message thread. Use in `config.js` under `nod
 
 ---
 
-## Unavailable / temporary
-
-### Yumi (Ariato!)
-- **Source:** Ariato! — 12/01/26
-- **Status:** Server temporarily down (YouTube key expired).
-- **Locations:** Canada 🇨🇦 (port 2333), Singapore 🇸🇬 (port 2333)
+### D-Radio
+- **Source:** ! Mart / Ariato! — 28/12/25, 10/02/26
+- **Location:** Paris 🇫🇷
 - **Version:** Lavalink V4.1.2
 
 ```json
 {
-  "name": "Yumi",
+  "name": "D-Radio",
+  "password": "KaAs",
+  "host": "ishaan.hidencloud.com",
+  "port": 24590,
+  "secure": false
+}
+```
+
+**Platforms:** YouTube, Spotify, SoundCloud, MP3 streams (radio).
+
+---
+
+### Serenetia (Amane & AjieDev)
+- **Source:** Amane & AjieDev
+- **Hosting:** serenetia.com
+- **Version:** 3.x / 4.x
+
+**V4:** `lavalinkv4.serenetia.com:443` | **V3:** `lavalinkv3.serenetia.com:443` | **V3/V4:** `lavalink.serenetia.com:443`
+
+```json
+{
+  "name": "Serenetia V4",
+  "password": "https://dsc.gg/ajidevserver",
+  "host": "lavalinkv4.serenetia.com",
+  "port": 443,
+  "secure": true
+}
+```
+
+---
+
+### Jirayu
+- **Source:** Jirayu
+- **Version:** 4.0.8 (salee-plugin Proxy)
+
+```json
+{
+  "name": "Jirayu",
+  "password": "youshallnotpass",
+  "host": "lavalink.jirayu.net",
+  "port": 443,
+  "secure": true
+}
+```
+
+---
+
+### Millohost (AneFaiz)
+- **Source:** AneFaiz
+
+```json
+{
+  "name": "Millohost",
+  "password": "https://discord.gg/mjS5J2K3ep",
+  "host": "lava-v3.millohost.my.id",
+  "port": 443,
+  "secure": true
+}
+```
+
+---
+
+### Rive (southctrl)
+- **Source:** southctrl
+- **Version:** 4.1.2
+
+```json
+{
+  "name": "Rive",
+  "password": "youshallnotpass",
+  "host": "lavalink.rive.wtf",
+  "port": 443,
+  "secure": true
+}
+```
+
+---
+
+## Error / unstable
+
+### Yumi Singapore & Canada (Ariato!)
+- **Source:** Ariato! — 10/02/26
+- **Status:** 🔴 Error (as of Feb 10, 2026)
+- **Locations:** Singapore 🇸🇬 (OVH), Canada 🇨🇦 (OVH)
+- **Version:** Lavalink V4.1.2
+
+**Singapore:**
+```json
+{
+  "name": "Yumi Singapore",
   "password": "Sakura",
-  "host": "<host TBD when back online>",
+  "host": "sgp.lavalink.yumistack.net",
   "port": 2333,
   "secure": false
 }
 ```
 
-**Platforms (when up):** YouTube, SoundCloud, MP3 & MP4; Singapore node also Spotify, Deezer, Apple Music.
+**Canada:**
+```json
+{
+  "name": "Yumi Canada",
+  "password": "Sakura",
+  "host": "ca.lavalink.yumistack.net",
+  "port": 2333,
+  "secure": false
+}
+```
+
+**Platforms (when up):** YouTube, Spotify (not available now), Apple Music, SoundCloud, Deezer, direct links.  
+**Note:** Don't forget to clear player sessions if switching nodes.
 
 ---
 
-*Last synced from thread: 03/02/2026*
+*Last synced from thread: 21/02/2026*
