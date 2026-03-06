@@ -1,9 +1,8 @@
 const { SlashCommandBuilder, ContainerBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+const { SearchResultType } = require('distube');
 const config = require('../../config.js');
-const { requesters } = require('./play');
 const { sendErrorResponse, handleCommandError } = require('../../utils/responseHandler.js');
 const { checkVoiceChannel: checkVC, checkMusicChannel } = require('../../utils/voiceChannelCheck.js');
-const { getLavalinkManager } = require('../../lavalink.js');
 const { getLang } = require('../../utils/languageLoader');
 
 const data = new SlashCommandBuilder()
@@ -48,118 +47,31 @@ module.exports = {
                 return reply;
             }
 
-            const nodeManager = getLavalinkManager();
-            if (!nodeManager) {
-                return sendErrorResponse(
-                    interaction,
-                    t.lavalinkManagerError.title + '\n\n' +
-                    t.lavalinkManagerError.message + '\n' +
-                    t.lavalinkManagerError.note,
-                    5000
-                );
-            }
-            
-            try {
-                await nodeManager.ensureNodeAvailable();
-            } catch (error) {
-                const nodeCount = nodeManager.getNodeCount();
-                const totalCount = nodeManager.getTotalNodeCount();
-                return sendErrorResponse(
-                    interaction,
-                    t.noNodes.title + '\n\n' +
-                    t.noNodes.message
-                        .replace('{connected}', nodeCount)
-                        .replace('{total}', totalCount) + '\n' +
-                    t.noNodes.note,
-                    5000
-                );
-            }
-
-            const existingPlayer = client.riffy.players.get(interaction.guildId);
-            const voiceCheck = await checkVC(interaction, existingPlayer);
+            const existingQueue = client.distube.getQueue(interaction.guildId);
+            const voiceCheck = await checkVC(interaction, existingQueue);
             if (!voiceCheck.allowed) {
                 const reply = await interaction.editReply(voiceCheck.response);
                 setTimeout(() => reply.delete().catch(() => {}), 5000);
                 return reply;
             }
 
-            const userVoiceChannel = interaction.member.voice.channelId;
-            
-            if (existingPlayer && existingPlayer.voiceChannel !== userVoiceChannel) {
-                try {
-                    const { cleanupTrackMessages } = require('../../player.js');
-                    await cleanupTrackMessages(client, existingPlayer);
-                    existingPlayer.queue.clear();
-                    existingPlayer.stop();
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    existingPlayer.destroy();
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                } catch (error) {
-                    console.error('Error destroying old player:', error);
-                    try {
-                        if (!existingPlayer.destroyed) {
-                            existingPlayer.destroy();
-                            await new Promise(resolve => setTimeout(resolve, 500));
-                        }
-                    } catch (e) {}
-                }
+            // Ensure the user is in a voice channel
+            const userVoiceChannel = interaction.member.voice.channel;
+            if (!userVoiceChannel) {
+                return sendErrorResponse(
+                    interaction,
+                    t.noResults?.title || '## ❌ Error' + '\n\n' +
+                    'You must be in a voice channel to use this command.',
+                    5000
+                );
             }
 
-            await nodeManager.checkAllNodesHealth().catch(() => {});
-            await nodeManager.forceConnectAllNodes().catch(() => {});
-            await new Promise(res => setTimeout(res, 400));
-            let player;
-            let attempts = 0;
-            const maxAttempts = 3;
-            while (attempts < maxAttempts) {
-                await nodeManager.ensureNodeAvailable();
-                try {
-                    player = client.riffy.createConnection({
-                        guildId: interaction.guildId,
-                        voiceChannel: userVoiceChannel,
-                        textChannel: interaction.channelId,
-                        deaf: true
-                    });
-                    break;
-                } catch (err) {
-                    attempts++;
-                    const msg = err?.message || '';
-                    if (attempts < maxAttempts && (msg.includes('No nodes are available') || msg.includes('fetch failed'))) {
-                        await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
-                        await nodeManager.ensureNodeAvailable();
-                        await new Promise(res => setTimeout(res, 700));
-                        continue;
-                    }
-                    if (attempts >= maxAttempts) {
-                        await nodeManager.refreshRiffy?.();
-                        await nodeManager.ensureNodeAvailable();
-                        player = client.riffy.createConnection({
-                            guildId: interaction.guildId,
-                            voiceChannel: userVoiceChannel,
-                            textChannel: interaction.channelId,
-                            deaf: true
-                        });
-                        break;
-                    }
-                    throw err;
-                }
-            }
-
-            let resolve;
+            // Search for tracks using DisTube
+            let results;
             try {
-                resolve = await client.riffy.resolve({ query, requester: interaction.user.username });
-            } catch (err) {
-                const msg = err?.message || '';
-                if (msg.includes('fetch failed') || msg.includes('No nodes are available') || (err.cause && err.cause.code === 'ECONNREFUSED')) {
-                    await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
-                    await nodeManager.ensureNodeAvailable();
-                    resolve = await client.riffy.resolve({ query, requester: interaction.user.username });
-                } else {
-                    throw err;
-                }
-            }
-
-            if (!resolve || typeof resolve !== 'object' || !Array.isArray(resolve.tracks)) {
+                results = await client.distube.search(query, SearchResultType.VIDEO, 5);
+            } catch (searchError) {
+                console.error('[ SEARCH ] Search error:', searchError);
                 return sendErrorResponse(
                     interaction,
                     t.noResults.title + '\n\n' +
@@ -169,19 +81,7 @@ module.exports = {
                 );
             }
 
-            if (resolve.loadType === 'playlist') {
-                return sendErrorResponse(
-                    interaction,
-                    t.playlistNotSupported.title + '\n\n' +
-                    t.playlistNotSupported.message + '\n' +
-                    t.playlistNotSupported.note,
-                    5000
-                );
-            }
-
-            const tracks = resolve.tracks.slice(0, 5);
-            
-            if (tracks.length === 0) {
+            if (!results || results.length === 0) {
                 return sendErrorResponse(
                     interaction,
                     t.noResults.title + '\n\n' +
@@ -191,13 +91,16 @@ module.exports = {
                 );
             }
 
-            const searchResults = tracks.map((track, index) => {
+            const tracks = results.slice(0, 5);
+
+            const searchResults = tracks.map((result, index) => {
                 return t.results.track
                     .replace('{number}', index + 1)
-                    .replace('{title}', track.info.title)
-                    .replace('{uri}', track.info.uri)
-                    .replace('{author}', track.info.author || 'Unknown')
-                    .replace('{duration}', formatDuration(track.info.length));
+                    .replace('{title}', result.name)
+                    .replace('{uri}', result.url)
+                    .replace('{author}', result.uploader?.name || 'Unknown')
+                    // result.duration is in seconds; multiply by 1000 for formatDuration
+                    .replace('{duration}', formatDuration(result.duration * 1000));
             }).join('\n\n');
 
             const embedColor = parseInt(config.embedColor?.replace('#', '') || '1db954', 16);
@@ -237,10 +140,10 @@ module.exports = {
                 rows.push(new ActionRowBuilder().addComponents(buttons.slice(i, i + 5)));
             }
 
-            const message = await interaction.editReply({ 
-                components: [...components, ...rows], 
+            const message = await interaction.editReply({
+                components: [...components, ...rows],
                 flags: MessageFlags.IsComponentsV2,
-                fetchReply: true 
+                fetchReply: true
             });
 
             const collector = message.createMessageComponentCollector({
@@ -250,7 +153,7 @@ module.exports = {
 
             collector.on('collect', async (i) => {
                 await i.deferUpdate();
-                
+
                 if (i.customId.startsWith('search_cancel_')) {
                     collector.stop();
                     setTimeout(() => {
@@ -264,18 +167,13 @@ module.exports = {
                     return;
                 }
 
-                const selectedTrack = tracks[trackIndex];
-                selectedTrack.info.requester = interaction.user.username;
-                player.queue.add(selectedTrack);
-                requesters.set(selectedTrack.info.uri, interaction.user.username);
+                const selectedResult = tracks[trackIndex];
 
-                let connectionAttempts = 0;
-                while (!player.connected && connectionAttempts < 20) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    connectionAttempts++;
-                }
-
-                if (!player.playing && !player.paused) player.play();
+                // Play/queue the selected track via DisTube
+                await client.distube.play(userVoiceChannel, selectedResult.url, {
+                    member: interaction.member,
+                    textChannel: interaction.channel
+                });
 
                 collector.stop();
                 setTimeout(() => {
@@ -295,7 +193,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { search: { errors: {} } } }));
             const t = lang.music?.search?.errors || {};
-            
+
             return handleCommandError(
                 interaction,
                 error,

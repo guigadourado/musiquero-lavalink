@@ -1,16 +1,20 @@
 const { ContainerBuilder, MessageFlags } = require('discord.js');
 const { getLang, getLangSync } = require('./languageLoader.js');
 
-async function checkQueue(player, customMessage = null, guildId = null) {
-    if (!player || !player.queue || player.queue.length === 0) {
+// DisTube: queue.songs[0] = current song, queue.songs.slice(1) = upcoming
+// "queue has songs" means queue.songs.length > 1 (songs after current)
+// "something playing" means queue.songs.length > 0
+
+async function checkQueue(queue, customMessage = null, guildId = null) {
+    if (!queue || !queue.songs || queue.songs.length <= 1) {
         let lang;
         try {
             lang = guildId ? await getLang(guildId) : getLangSync();
         } catch (error) {
             lang = getLangSync();
         }
-        
-      
+
+
         const utils = lang?.utils || {};
         const validation = utils?.playerValidation || {
             queueEmpty: {
@@ -19,12 +23,12 @@ async function checkQueue(player, customMessage = null, guildId = null) {
                 note: 'Add some songs to the queue first using `/play`.'
             }
         };
-        
-        const message = customMessage || 
+
+        const message = customMessage ||
             `${validation.queueEmpty?.title || '## ❌ Queue Empty'}\n\n` +
             `${validation.queueEmpty?.message || 'The queue is empty. There are no songs available.'}\n` +
             `${validation.queueEmpty?.note || 'Add some songs to the queue first using `/play`.'}`;
-        
+
         return {
             valid: false,
             response: {
@@ -39,19 +43,19 @@ async function checkQueue(player, customMessage = null, guildId = null) {
             }
         };
     }
-    
+
     return { valid: true };
 }
 
-async function checkCurrentTrack(player, customMessage = null, guildId = null) {
-    if (!player || !player.current) {
+async function checkCurrentTrack(queue, customMessage = null, guildId = null) {
+    if (!queue || !queue.songs || queue.songs.length === 0) {
         let lang;
         try {
             lang = guildId ? await getLang(guildId) : getLangSync();
         } catch (error) {
-            lang = getLangSync(); // Fallback to sync version
+            lang = getLangSync();
         }
-       
+
         const utils = lang?.utils || {};
         const validation = utils?.playerValidation || {
             noSongPlaying: {
@@ -60,12 +64,12 @@ async function checkCurrentTrack(player, customMessage = null, guildId = null) {
                 note: 'Use `/play` to start playing music.'
             }
         };
-        
-        const message = customMessage || 
+
+        const message = customMessage ||
             `${validation.noSongPlaying?.title || '## ❌ No Song Playing'}\n\n` +
             `${validation.noSongPlaying?.message || 'No song is currently playing.'}\n` +
             `${validation.noSongPlaying?.note || 'Use `/play` to start playing music.'}`;
-        
+
         return {
             valid: false,
             response: {
@@ -80,20 +84,20 @@ async function checkCurrentTrack(player, customMessage = null, guildId = null) {
             }
         };
     }
-    
+
     return { valid: true };
 }
 
-async function checkQueueOrTrack(player, customMessage = null, guildId = null) {
-    if (!player || (!player.current && (!player.queue || player.queue.length === 0))) {
+async function checkQueueOrTrack(queue, customMessage = null, guildId = null) {
+    if (!queue || !queue.songs || queue.songs.length === 0) {
         let lang;
         try {
             lang = guildId ? await getLang(guildId) : getLangSync();
         } catch (error) {
-            lang = getLangSync(); 
+            lang = getLangSync();
         }
-        
-        
+
+
         const utils = lang?.utils || {};
         const validation = utils?.playerValidation || {
             noMusicPlaying: {
@@ -102,12 +106,12 @@ async function checkQueueOrTrack(player, customMessage = null, guildId = null) {
                 note: 'Use `/play` to start playing music.'
             }
         };
-        
-        const message = customMessage || 
+
+        const message = customMessage ||
             `${validation.noMusicPlaying?.title || '## ❌ No Music Playing'}\n\n` +
             `${validation.noMusicPlaying?.message || 'There is no music currently playing and the queue is empty.'}\n` +
             `${validation.noMusicPlaying?.note || 'Use `/play` to start playing music.'}`;
-        
+
         return {
             valid: false,
             response: {
@@ -122,7 +126,7 @@ async function checkQueueOrTrack(player, customMessage = null, guildId = null) {
             }
         };
     }
-    
+
     return { valid: true };
 }
 

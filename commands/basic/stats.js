@@ -36,10 +36,11 @@ module.exports = {
             
             await interaction.deferReply();
 
-            const player = client.riffy.players.get(interaction.guildId);
-            const activePlayers = Array.from(client.riffy.players.values()).filter(p => p.playing || p.paused);
-            const totalPlayers = client.riffy.players.size;
-            
+            const queue = client.distube?.getQueue(interaction.guildId);
+            const allQueues = client.distube?.queues ? [...client.distube.queues.values()] : [];
+            const activePlayers = allQueues.filter(q => !q.paused && q.songs.length > 0);
+            const totalPlayers = allQueues.length;
+
             const memoryUsage = process.memoryUsage();
             const totalMemory = os.totalmem();
             const freeMemory = os.freemem();
@@ -76,10 +77,11 @@ module.exports = {
             components.push(botInfoContainer);
             components.push(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
 
-            const currentTrack = player?.current 
-                ? (player.current.info.title.length > 40 
-                    ? player.current.info.title.substring(0, 40) + '...' 
-                    : player.current.info.title)
+            const currentSong = queue?.songs?.[0];
+            const currentTrack = currentSong
+                ? (currentSong.name.length > 40
+                    ? currentSong.name.substring(0, 40) + '...'
+                    : currentSong.name)
                 : 'None';
 
             const musicStatsContainer = new ContainerBuilder()

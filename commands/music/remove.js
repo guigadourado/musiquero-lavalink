@@ -31,9 +31,9 @@ module.exports = {
             const t = lang.music.remove;
 
             const position = interaction.options.getInteger('position');
-            const player = client.riffy.players.get(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, player);
-            
+            const queue = client.distube.getQueue(interaction.guildId);
+            const check = await checkVoiceChannel(interaction, queue);
+
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -43,13 +43,13 @@ module.exports = {
                 return reply;
             }
 
-            const queueCheck = await checkQueue(player, 
+            const queueCheck = await checkQueue(queue,
                 t.queueEmpty.title + '\n\n' +
                 t.queueEmpty.message + '\n' +
                 t.queueEmpty.note,
                 interaction.guildId
             );
-            
+
             if (!queueCheck.valid) {
                 const reply = await interaction.editReply({
                     ...queueCheck.response,
@@ -59,26 +59,30 @@ module.exports = {
                 return reply;
             }
 
-            if (position < 1 || position > player.queue.length) {
+            // upcoming songs are queue.songs.slice(1); position is 1-based within upcoming
+            const upcomingCount = queue.songs.length - 1;
+
+            if (position < 1 || position > upcomingCount) {
                 return await sendErrorResponse(
                     interaction,
                     t.invalidPosition.title + '\n\n' +
-                    t.invalidPosition.message.replace('{max}', player.queue.length) + '\n' +
+                    t.invalidPosition.message.replace('{max}', upcomingCount) + '\n' +
                     t.invalidPosition.note
-                        .replace('{count}', player.queue.length)
-                        .replace('{plural}', player.queue.length > 1 ? 's' : '')
+                        .replace('{count}', upcomingCount)
+                        .replace('{plural}', upcomingCount > 1 ? 's' : '')
                 );
             }
 
-            const removedTrack = player.queue[position - 1];
-            player.queue.remove(position - 1, 1);
+            // songs[0] = current, songs[position] = queue item at 1-based position
+            const removedTrack = queue.songs[position];
+            queue.songs.splice(position, 1);
 
             return await sendSuccessResponse(
                 interaction,
                 t.success.title + '\n\n' +
                 t.success.removed
-                    .replace('{title}', removedTrack.info.title)
-                    .replace('{uri}', removedTrack.info.uri) + '\n' +
+                    .replace('{title}', removedTrack.name)
+                    .replace('{uri}', removedTrack.url) + '\n' +
                 t.success.position.replace('{position}', position) + '\n\n' +
                 t.success.message
             );
@@ -86,7 +90,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { remove: { errors: {} } } }));
             const t = lang.music?.remove?.errors || {};
-            
+
             return await handleCommandError(
                 interaction,
                 error,

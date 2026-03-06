@@ -12,8 +12,8 @@ function createProgressBar(current, total, length = 20) {
     const progress = Math.round((current / total) * length);
     const emptyProgress = length - progress;
 
-    const progressText = '▓'.repeat(progress); 
-    const emptyProgressText = '░'.repeat(emptyProgress); 
+    const progressText = '▓'.repeat(progress);
+    const emptyProgressText = '░'.repeat(emptyProgress);
     const time = new Date(current * 1000).toISOString().substr(11, 8);
     const endTime = new Date(total * 1000).toISOString().substr(11, 8);
 
@@ -37,9 +37,9 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.np;
 
-            const player = client.riffy.players.get(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, player);
-            
+            const queue = client.distube.getQueue(interaction.guildId);
+            const check = await checkVoiceChannel(interaction, queue);
+
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -49,8 +49,8 @@ module.exports = {
                 return reply;
             }
 
-            const trackCheck = await checkCurrentTrack(player, null, interaction.guildId);
-            
+            const trackCheck = await checkCurrentTrack(queue, null, interaction.guildId);
+
             if (!trackCheck.valid) {
                 const reply = await interaction.editReply({
                     ...trackCheck.response,
@@ -60,7 +60,9 @@ module.exports = {
                 return reply;
             }
 
-            const progressBar = createProgressBar(player.position / 1000, player.current.info.length / 1000);
+            const currentSong = queue.songs[0];
+            // currentTime and duration are both in seconds
+            const progressBar = createProgressBar(queue.currentTime, currentSong.duration);
             const embedColor = getEmbedColor();
             const components = [];
 
@@ -70,9 +72,9 @@ module.exports = {
                     (textDisplay) => textDisplay.setContent(
                         t.title + '\n\n' +
                         t.nowPlaying
-                            .replace('{title}', player.current.info.title)
-                            .replace('{uri}', player.current.info.uri) + '\n' +
-                        t.by.replace('{author}', player.current.info.author) + '\n\n' +
+                            .replace('{title}', currentSong.name)
+                            .replace('{uri}', currentSong.url) + '\n' +
+                        t.by.replace('{author}', currentSong.uploader?.name || 'Unknown') + '\n\n' +
                         progressBar
                     )
                 );
@@ -90,7 +92,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { np: { errors: {} } } }));
             const t = lang.music?.np?.errors || {};
-            
+
             return await handleCommandError(
                 interaction,
                 error,

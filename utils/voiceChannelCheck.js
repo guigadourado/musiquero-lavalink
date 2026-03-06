@@ -44,8 +44,10 @@ async function checkVoiceChannel(interaction, player) {
         };
     }
 
-    if (player && player.voiceChannel && interaction.member.voice.channelId !== player.voiceChannel) {
-        const botChannel = interaction.guild.channels.cache.get(player.voiceChannel);
+    // DisTube: queue.voiceChannel is a channel object; Riffy used a string ID
+    const playerVoiceId = player?.voiceChannel?.id ?? player?.voiceChannel;
+    if (player && playerVoiceId && interaction.member.voice.channelId !== playerVoiceId) {
+        const botChannel = interaction.guild.channels.cache.get(playerVoiceId);
         const channelName = botChannel ? botChannel.name : 'the bot\'s voice channel';
 
         const errorContainer = new ContainerBuilder()

@@ -1,7 +1,6 @@
 const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const path = require("path");
 const fs = require('fs').promises;
-const axios = require('axios');
 const crypto = require('crypto');
 
 function youtubeThumbCandidates(videoId) {
@@ -32,16 +31,17 @@ function tryExtractYouTubeId(url) {
 
 async function fetchImageBuffer(url, timeout = 3000) {
     try {
-        const resp = await axios.get(url, {
-            responseType: 'arraybuffer',
-            timeout,
-            maxContentLength: 5 * 1024 * 1024, // 5MB max
+        const resp = await fetch(url, {
+            signal: AbortSignal.timeout(timeout),
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            validateStatus: status => status >= 200 && status < 400
+            }
         });
-        return Buffer.from(resp.data);
+        if (!resp.ok) return null;
+        const arrayBuffer = await resp.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        if (buffer.length > 5 * 1024 * 1024) return null; // 5MB max
+        return buffer;
     } catch (error) {
         return null;
     }

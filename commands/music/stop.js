@@ -26,9 +26,9 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.stop;
 
-            const player = client.riffy.players.get(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, player);
-            
+            const queue = client.distube.getQueue(interaction.guildId);
+            const check = await checkVoiceChannel(interaction, queue);
+
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -41,14 +41,15 @@ module.exports = {
             const settings = await getAutoplaySettings(interaction.guildId).catch(() => ({ twentyfourseven: true }));
             const is24_7 = settings.twentyfourseven;
 
-            await cleanupTrackMessages(client, player);
+            await cleanupTrackMessages(client, queue);
 
-            player.queue.clear();
-            
-            player.stop();
-            
-            if (!is24_7) {
-                player.destroy();
+            if (is24_7) {
+                // In 24/7 mode: clear upcoming songs then skip current
+                queue.songs.splice(1);
+                await client.distube.skip(queue.voiceChannel);
+            } else {
+                // Normal mode: stop playback and disconnect
+                await client.distube.stop(queue.voiceChannel);
             }
 
             return await sendSuccessResponse(
@@ -61,7 +62,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { stop: { errors: {} } } }));
             const t = lang.music?.stop?.errors || {};
-            
+
             return await handleCommandError(
                 interaction,
                 error,

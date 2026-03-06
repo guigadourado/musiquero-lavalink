@@ -24,9 +24,9 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.resume;
 
-            const player = client.riffy.players.get(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, player);
-            
+            const queue = client.distube.getQueue(interaction.guildId);
+            const check = await checkVoiceChannel(interaction, queue);
+
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -36,18 +36,18 @@ module.exports = {
                 return reply;
             }
 
-            // Validate player before resuming
-            if (!player || player.destroyed) {
+            // Validate queue before resuming
+            if (!queue) {
                 return await handleCommandError(
                     interaction,
-                    new Error('Player not available'),
+                    new Error('Queue not available'),
                     'resume',
                     (t.errors?.title || '## ❌ Error') + '\n\n' + (t.errors?.message || 'Player is not available. Please start playing a song first.')
                 );
             }
 
             // Check if already playing
-            if (!player.paused) {
+            if (!queue.paused) {
                 return await sendSuccessResponse(
                     interaction,
                     '## ▶️ Already Playing\n\n' +
@@ -58,10 +58,10 @@ module.exports = {
 
             // Try to resume with error handling
             try {
-                player.pause(false);
+                await client.distube.resume(queue.voiceChannel);
             } catch (resumeError) {
-                console.warn(`[ RESUME ] Error resuming player: ${resumeError.message}`);
-                // If resume fails, still try to send success message (player might be in transition)
+                console.warn(`[ RESUME ] Error resuming queue: ${resumeError.message}`);
+                // If resume fails, still try to send success message (queue might be in transition)
                 // The error will be caught by outer catch if it's critical
             }
 
@@ -75,7 +75,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { resume: { errors: {} } } }));
             const t = lang.music?.resume?.errors || {};
-            
+
             return await handleCommandError(
                 interaction,
                 error,
