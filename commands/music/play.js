@@ -480,18 +480,8 @@ module.exports = {
                 );
             }
 
-            // Wait for player to be connected (up to 8 seconds for Render network latency)
-            let connectionAttempts = 0;
-            while (!player.connected && connectionAttempts < 80) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                connectionAttempts++;
-            }
-
-            if (!player.connected) {
-                console.warn(`[ PLAY ] Voice connection not established after 8s for guild ${interaction.guildId}, attempting play anyway`);
-            }
-
-            // Only start playback if we have tracks and player is not already playing
+            // Only start playback if we have tracks and player is not already playing.
+            // Riffy internally handles waiting for voice credentials (up to 10s) in player.play().
             if (player.queue.length > 0 || player.current) {
                 if (!player.playing && !player.paused) {
                     try {
