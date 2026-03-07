@@ -5,7 +5,6 @@ const { EnhancedMusicCard } = require("./utils/musicCard");
 const config = require("./config.js");
 const musicIcons = require('./UI/icons/musicicons.js');
 const colors = require('./UI/colors/colors');
-const fs = require("fs").promises;
 const path = require("path");
 const axios = require('axios');
 const { getAutoplaySettings, playlistCollection } = require('./mongodb.js');
@@ -239,9 +238,6 @@ async function initializePlayer(client) {
                     showVisualizer: config.showVisualizer !== false,
                 });
 
-                const cardPath = path.join(__dirname, 'musicard.png');
-                await fs.writeFile(cardPath, cardBuffer);
-
                 attachment = new AttachmentBuilder(cardBuffer, { name: 'song-banner.png' });
             }
 
@@ -353,47 +349,67 @@ async function initializePlayer(client) {
 
     client.riffy.on("trackEnd", async (player) => {
         const guildId = player.guildId;
-        
-        if (client.statusManager) {
-            await client.statusManager.onTrackEnd(guildId).catch(() => {});
-        }
-        
-        const intervalId = progressUpdateIntervals.get(guildId);
-        if (intervalId) {
-            clearInterval(intervalId);
-            progressUpdateIntervals.delete(guildId);
-        }
-        nowPlayingMessages.delete(guildId);
-        
-        const channel = client.channels.cache.get(player.textChannel);
-        if (channel) {
-            const settings = await getAutoplaySettings(player.guildId).catch(() => ({ autoplay: true }));
-            const hasNextTrack = player.queue.length > 0 || player.loop === "queue" || player.loop === "track" || settings.autoplay;
-            
-            if (!hasNextTrack) {
-                await cleanupTrackMessages(client, player);
-            } else {
-                await cleanupPreviousTrackMessages(channel, guildId);
+        try {
+            if (client.statusManager) {
+                await client.statusManager.onTrackEnd(guildId).catch(() => {});
             }
+
+            const intervalId = progressUpdateIntervals.get(guildId);
+            if (intervalId) {
+                clearInterval(intervalId);
+                progressUpdateIntervals.delete(guildId);
+            }
+            nowPlayingMessages.delete(guildId);
+
+            const channel = client.channels.cache.get(player.textChannel);
+            if (channel) {
+                const settings = await getAutoplaySettings(player.guildId).catch(() => ({ autoplay: true }));
+                const hasNextTrack = player.queue.length > 0 || player.loop === "queue" || player.loop === "track" || settings.autoplay;
+
+                if (!hasNextTrack) {
+                    await cleanupTrackMessages(client, player);
+                } else {
+                    await cleanupPreviousTrackMessages(channel, guildId);
+                }
+            }
+        } catch (error) {
+            console.error(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.red}Error in trackEnd for guild ${guildId}: ${error.message}${colors.reset}`);
         }
     });
 
     client.riffy.on("playerDisconnect", async (player) => {
         const guildId = player.guildId;
-        const lang = getLangSync();
         console.warn(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.yellow}Player disconnected for guild ${guildId}${colors.reset}`);
-        
-        if (client.statusManager) {
-            await client.statusManager.onPlayerDisconnect(guildId).catch(() => {});
+        try {
+            if (client.statusManager) {
+                await client.statusManager.onPlayerDisconnect(guildId).catch(() => {});
+            }
+
+            const intervalId = progressUpdateIntervals.get(guildId);
+            if (intervalId) {
+                clearInterval(intervalId);
+                progressUpdateIntervals.delete(guildId);
+            }
+            nowPlayingMessages.delete(guildId);
+            await cleanupTrackMessages(client, player);
+
+            // Attempt reconnection if the target voice channel still exists
+            if (player && !player.destroyed && player.voiceChannel) {
+                const guild = client.guilds.cache.get(guildId);
+                const voiceChannel = guild?.channels?.cache?.get(player.voiceChannel);
+                if (voiceChannel) {
+                    await new Promise(res => setTimeout(res, 2000));
+                    try {
+                        player.connect();
+                        console.log(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.green}Reconnected player for guild ${guildId}${colors.reset}`);
+                    } catch (reconnectErr) {
+                        console.warn(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.yellow}Failed to reconnect player for guild ${guildId}: ${reconnectErr.message}${colors.reset}`);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.red}Error in playerDisconnect for guild ${guildId}: ${error.message}${colors.reset}`);
         }
-        
-        const intervalId = progressUpdateIntervals.get(guildId);
-        if (intervalId) {
-            clearInterval(intervalId);
-            progressUpdateIntervals.delete(guildId);
-        }
-        nowPlayingMessages.delete(guildId);
-        await cleanupTrackMessages(client, player);
     });
 
     // Handle player connection errors
@@ -546,7 +562,7 @@ async function cleanupTrackMessages(client, player) {
         }
     }
 
-    guildTrackMessages.set(guildId, []);
+    guildTrackMessages.delete(guildId);
     nowPlayingMessages.delete(guildId);
 }
 function formatDuration(ms) {

@@ -3,7 +3,7 @@ const config = require("./config.js");
 const fs = require("fs");
 const path = require('path');
 const { initializePlayer } = require('./player');
-const { connectToDatabase } = require('./mongodb');
+const { connectToDatabase, disconnectDatabase } = require('./mongodb');
 const colors = require('./UI/colors/colors');
 const { getLavalinkManager } = require('./lavalink.js');
 const { getLang, getLangSync } = require('./utils/languageLoader.js');
@@ -21,16 +21,16 @@ client.config = config;
 process.on('unhandledRejection', (error) => {
     const lang = getLangSync();
     if (error && error.message && (
-        error.message.includes('Cannot read properties of null') ||
-        error.message.includes('track.info') ||
-        error.message.includes('thumbnail') ||
         error.message.includes('player.restart is not a function') ||
         error.message.includes('restart is not a function')
     )) {
-   
-        if (error.message.includes('player.restart') || error.message.includes('restart is not a function')) {
-            console.warn(`${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Ignoring Riffy reconnect bug: ${error.message}${colors.reset}`);
-        }
+        console.warn(`${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Ignoring Riffy reconnect bug: ${error.message}${colors.reset}`);
+        return;
+    }
+    if (error && error.message && (
+        error.message.includes('track.info') ||
+        error.message.includes('thumbnail')
+    )) {
         return;
     }
     
@@ -297,11 +297,14 @@ const gracefulShutdown = async (signal) => {
             nodeManager.destroy();
         }
         
+        // Close MongoDB connection
+        await disconnectDatabase().catch(() => {});
+
         // Destroy Discord client
         if (client && !client.destroyed) {
             client.destroy();
         }
-        
+
         console.log(`${colors.cyan}[ SHUTDOWN ]${colors.reset} ${colors.green}Graceful shutdown completed${colors.reset}`);
         process.exit(0);
     } catch (error) {
@@ -317,11 +320,12 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('uncaughtException', (error) => {
     const lang = getLangSync();
     if (error?.message && (
-        error.message.includes('Cannot read properties of null') ||
         error.message.includes('track.info') ||
-        error.message.includes('thumbnail')
+        error.message.includes('thumbnail') ||
+        error.message.includes('player.restart is not a function') ||
+        error.message.includes('restart is not a function')
     )) {
-        console.warn(lang.console?.bot?.riffyThumbnailError?.replace('{message}', error.message) || `[ Riffy ] Ignoring thumbnail error: ${error.message}`);
+        console.warn(lang.console?.bot?.riffyThumbnailError?.replace('{message}', error.message) || `[ Riffy ] Ignoring known Riffy error: ${error.message}`);
         return;
     }
     console.error(`${colors.cyan}[ CRITICAL ]${colors.reset} ${colors.red}Uncaught Exception:${colors.reset}`, error);

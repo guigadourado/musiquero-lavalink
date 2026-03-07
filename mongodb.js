@@ -102,8 +102,17 @@ function getLanguageCollection() {
     return languageCollection;
 }
 
+async function disconnectDatabase() {
+    if (client) {
+        try {
+            await client.close();
+        } catch (_) {}
+    }
+}
+
 module.exports = {
     connectToDatabase,
+    disconnectDatabase,
     playlistCollection,
     autoplayCollection,
     getAutoplaySettings,

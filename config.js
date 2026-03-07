@@ -158,6 +158,20 @@ module.exports = {
       host: "lavalink.rive.wtf",
       port: 443,
       secure: true
+    },
+    {
+      name: "GlaceYT",
+      password: "glace",
+      host: "ge-02.vortexa.cloud",
+      port: 11050,
+      secure: false
+    },
+    {
+      name: "GlaceYT",
+      password: "glace",
+      host: "de-01.strixnodes.com",
+      port: 2010,
+      secure: false
     }
     // More nodes from thread: see docs/LAVALINK_NODES.md
     // The bot will automatically use the first available node

@@ -82,9 +82,9 @@ async function* getSpotifyPlaylistTracksGenerator(playlistId) {
                 
                 offset += limit;
                 
-                // Small delay to avoid rate limits and reduce memory pressure
+                // Delay to respect Spotify's ~3 req/sec rate limit
                 if (offset < total && fetched < maxTracks) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await new Promise(resolve => setTimeout(resolve, 350));
                 }
             } while (fetched < total && fetched < maxTracks);
 
@@ -421,8 +421,8 @@ module.exports = {
             // Note: queuedTracks is already set for non-Spotify tracks above
             if (tracksToQueue.length > 0) {
                 const maxTracks = config.spotifyPlaylistLimit || 100;
-                const batchSize = 5; // Process tracks in small batches to reduce memory pressure
-                const delayBetweenBatches = 200; // Small delay between batches
+                const batchSize = 3; // Keep concurrency low to avoid overwhelming Lavalink
+                const delayBetweenBatches = 500; // Delay between batches to avoid rate limits
 
                 // Process tracks in batches for memory efficiency
                 for (let i = 0; i < Math.min(tracksToQueue.length, maxTracks); i += batchSize) {
