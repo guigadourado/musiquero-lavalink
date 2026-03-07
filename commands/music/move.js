@@ -35,11 +35,11 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.move;
 
-            const queue = client.distube.getQueue(interaction.guildId);
+            const player = client.riffy.players.get(interaction.guildId);
             const from = interaction.options.getInteger('from');
             const to = interaction.options.getInteger('to');
-            const check = await checkVoiceChannel(interaction, queue);
-
+            const check = await checkVoiceChannel(interaction, player);
+            
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -49,13 +49,13 @@ module.exports = {
                 return reply;
             }
 
-            const queueCheck = await checkQueue(queue,
+            const queueCheck = await checkQueue(player, 
                 t.queueEmpty.title + '\n\n' +
                 t.queueEmpty.message + '\n' +
                 t.queueEmpty.note,
                 interaction.guildId
             );
-
+            
             if (!queueCheck.valid) {
                 const reply = await interaction.editReply({
                     ...queueCheck.response,
@@ -65,17 +65,14 @@ module.exports = {
                 return reply;
             }
 
-            // upcoming count = total songs minus current (songs[0])
-            const upcomingCount = queue.songs.length - 1;
-
-            if (from < 1 || from > upcomingCount || to < 1 || to > upcomingCount) {
+            if (from < 1 || from > player.queue.length || to < 1 || to > player.queue.length) {
                 return await sendErrorResponse(
                     interaction,
                     t.invalidPosition.title + '\n\n' +
-                    t.invalidPosition.message.replace('{max}', upcomingCount) + '\n' +
+                    t.invalidPosition.message.replace('{max}', player.queue.length) + '\n' +
                     t.invalidPosition.note
-                        .replace('{count}', upcomingCount)
-                        .replace('{plural}', upcomingCount > 1 ? 's' : '')
+                        .replace('{count}', player.queue.length)
+                        .replace('{plural}', player.queue.length > 1 ? 's' : '')
                 );
             }
 
@@ -88,22 +85,21 @@ module.exports = {
                 );
             }
 
-            // Work with upcoming array (offset: songs[0]=current, songs[1]=upcoming[0])
-            const upcoming = queue.songs.slice(1);
-            const track = upcoming[from - 1];
-
-            upcoming.splice(from - 1, 1);
-            upcoming.splice(to - 1, 0, track);
-
-            // Replace upcoming songs in queue (keep songs[0] as current)
-            queue.songs.splice(1, queue.songs.length - 1, ...upcoming);
+            const track = player.queue[from - 1];
+            const queueArray = [...player.queue];
+            
+            queueArray.splice(from - 1, 1);
+            queueArray.splice(to - 1, 0, track);
+            
+            player.queue.clear();
+            queueArray.forEach(t => player.queue.add(t));
 
             return await sendSuccessResponse(
                 interaction,
                 t.success.title + '\n\n' +
                 t.success.track
-                    .replace('{title}', track.name)
-                    .replace('{uri}', track.url) + '\n' +
+                    .replace('{title}', track.info.title)
+                    .replace('{uri}', track.info.uri) + '\n' +
                 t.success.from.replace('{from}', from) + '\n' +
                 t.success.to.replace('{to}', to) + '\n\n' +
                 t.success.message
@@ -112,7 +108,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { move: { errors: {} } } }));
             const t = lang.music?.move?.errors || {};
-
+            
             return await handleCommandError(
                 interaction,
                 error,

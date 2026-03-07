@@ -20,10 +20,10 @@ module.exports = {
             await interaction.deferReply();
             const lang = await getLang(interaction.guildId);
 
-            const queue = client.distube.getQueue(interaction.guildId);
+            const player = client.riffy.players.get(interaction.guildId);
             const playlistName = interaction.options.getString('name');
 
-            if (!queue || queue.songs.length === 0) {
+            if (!player || player.queue.length === 0) {
                 return sendErrorResponse(
                     interaction,
                     `${lang.playlist.savequeue.queueEmpty.title}\n\n` +
@@ -52,7 +52,13 @@ module.exports = {
                 );
             }
 
-            const songs = queue.songs.map(song => song.url).filter(Boolean);
+            const songs = [];
+            if (player.current) {
+                songs.push(player.current.info.uri);
+            }
+            player.queue.forEach(track => {
+                songs.push(track.info.uri);
+            });
 
             await playlistCollection.insertOne({
                 guildId,

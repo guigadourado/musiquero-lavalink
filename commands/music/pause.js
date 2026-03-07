@@ -24,9 +24,9 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.pause;
 
-            const queue = client.distube.getQueue(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, queue);
-
+            const player = client.riffy.players.get(interaction.guildId);
+            const check = await checkVoiceChannel(interaction, player);
+            
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -36,18 +36,18 @@ module.exports = {
                 return reply;
             }
 
-            // Validate queue before pausing
-            if (!queue) {
+            // Validate player before pausing
+            if (!player || player.destroyed) {
                 return await handleCommandError(
                     interaction,
-                    new Error('Queue not available'),
+                    new Error('Player not available'),
                     'pause',
                     (t.errors?.title || '## ❌ Error') + '\n\n' + (t.errors?.message || 'Player is not available. Please start playing a song first.')
                 );
             }
 
             // Check if already paused
-            if (queue.paused) {
+            if (player.paused) {
                 return await sendSuccessResponse(
                     interaction,
                     '## ⏸️ Already Paused\n\n' +
@@ -58,9 +58,9 @@ module.exports = {
 
             // Try to pause with error handling
             try {
-                await client.distube.pause(queue.voiceChannel);
+                player.pause(true);
             } catch (pauseError) {
-                console.warn(`[ PAUSE ] Error pausing queue: ${pauseError.message}`);
+                console.warn(`[ PAUSE ] Error pausing player: ${pauseError.message}`);
             }
 
             return await sendSuccessResponse(
@@ -73,7 +73,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { pause: { errors: {} } } }));
             const t = lang.music?.pause?.errors || {};
-
+            
             return await handleCommandError(
                 interaction,
                 error,

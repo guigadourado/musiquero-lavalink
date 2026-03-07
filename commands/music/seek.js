@@ -41,7 +41,7 @@ function formatTime(ms) {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-
+    
     if (hours > 0) {
         return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
@@ -65,9 +65,9 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.seek;
 
-            const queue = client.distube.getQueue(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, queue);
-
+            const player = client.riffy.players.get(interaction.guildId);
+            const check = await checkVoiceChannel(interaction, player);
+            
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -77,8 +77,8 @@ module.exports = {
                 return reply;
             }
 
-            const trackCheck = await checkCurrentTrack(queue, null, interaction.guildId);
-
+            const trackCheck = await checkCurrentTrack(player, null, interaction.guildId);
+            
             if (!trackCheck.valid) {
                 const reply = await interaction.editReply({
                     ...trackCheck.response,
@@ -89,37 +89,35 @@ module.exports = {
             }
 
             const timeInput = interaction.options.getString('time');
-            // duration is in seconds; multiply by 1000 for ms comparison with seekTime
-            const trackLengthMs = queue.songs[0].duration * 1000;
-            const seekTime = parseTime(timeInput); // seekTime is in ms
+            const trackLength = player.current.info.length;
+            const seekTime = parseTime(timeInput);
 
-            if (seekTime === null || seekTime < 0 || seekTime > trackLengthMs) {
+            if (seekTime === null || seekTime < 0 || seekTime > trackLength) {
                 return await sendErrorResponse(
                     interaction,
                     t.invalidTime.title + '\n\n' +
                     t.invalidTime.message + '\n' +
                     t.invalidTime.formats + '\n\n' +
-                    t.invalidTime.trackLength.replace('{length}', formatTime(trackLengthMs))
+                    t.invalidTime.trackLength.replace('{length}', formatTime(trackLength))
                 );
             }
 
-            // DisTube seek takes seconds, so divide ms by 1000
-            await client.distube.seek(queue.voiceChannel, seekTime / 1000);
+            player.seek(seekTime);
 
             return await sendSuccessResponse(
                 interaction,
                 t.success.title + '\n\n' +
                 t.success.time.replace('{time}', formatTime(seekTime)) + '\n' +
                 t.success.track
-                    .replace('{title}', queue.songs[0].name)
-                    .replace('{uri}', queue.songs[0].url) + '\n\n' +
+                    .replace('{title}', player.current.info.title)
+                    .replace('{uri}', player.current.info.uri) + '\n\n' +
                 t.success.message
             );
 
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { seek: { errors: {} } } }));
             const t = lang.music?.seek?.errors || {};
-
+            
             return await handleCommandError(
                 interaction,
                 error,

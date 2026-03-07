@@ -25,9 +25,9 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.skip;
 
-            const queue = client.distube.getQueue(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, queue);
-
+            const player = client.riffy.players.get(interaction.guildId);
+            const check = await checkVoiceChannel(interaction, player);
+            
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -37,21 +37,21 @@ module.exports = {
                 return reply;
             }
 
-            await cleanupTrackMessages(client, queue);
-
-            await client.distube.skip(queue.voiceChannel);
+            await cleanupTrackMessages(client, player);
+            
+            player.stop();
 
             return await sendSuccessResponse(
                 interaction,
                 t.success.title + '\n\n' +
                 t.success.message + '\n' +
-                (queue.songs.length > 1 ? t.success.nextSong : t.success.queueEmpty)
+                (player.queue.length > 0 ? t.success.nextSong : t.success.queueEmpty)
             );
 
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { skip: { errors: {} } } }));
             const t = lang.music?.skip?.errors || {};
-
+            
             return await handleCommandError(
                 interaction,
                 error,

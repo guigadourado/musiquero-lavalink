@@ -43,9 +43,9 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.filters;
 
-            const queue = client.distube.getQueue(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, queue);
-
+            const player = client.riffy.players.get(interaction.guildId);
+            const check = await checkVoiceChannel(interaction, player);
+            
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -58,8 +58,8 @@ module.exports = {
             const selectedFilter = interaction.options.getString('filter');
 
             if (selectedFilter === 'clear') {
-                queue.filters.clear();
-
+                player.filters.clearFilters();
+                
                 return await sendSuccessResponse(
                     interaction,
                     t.cleared.title + '\n\n' +
@@ -82,33 +82,48 @@ module.exports = {
                 'daycore': 'Daycore'
             };
 
-            // Map old filter choice values to DisTube filter names
-            const filterMap = {
-                'karaoke': 'karaoke',
-                'timescale': 'nightcore',
-                'tremolo': 'tremolo',
-                'vibrato': 'phaser',
-                'rotation': '3d',
-                'distortion': 'flanger',
-                'channelmix': 'surround',
-                'lowpass': 'earwax',
-                'bassboost': 'bassboost',
-                'nightcore': 'nightcore',
-                'daycore': 'vaporwave'
-            };
-
-            const distubeFilterName = filterMap[selectedFilter];
-
-            if (!distubeFilterName) {
-                return await sendErrorResponse(
-                    interaction,
-                    t.invalid.title + '\n\n' +
-                    t.invalid.message + '\n' +
-                    t.invalid.note
-                );
+            switch (selectedFilter) {
+                case 'karaoke':
+                    player.filters.setKaraoke(true);
+                    break;
+                case 'timescale':
+                    player.filters.setTimescale(true, { speed: 1.2, pitch: 1.2 });
+                    break;
+                case 'tremolo':
+                    player.filters.setTremolo(true, { frequency: 4, depth: 0.75 });
+                    break;
+                case 'vibrato':
+                    player.filters.setVibrato(true, { frequency: 4, depth: 0.75 });
+                    break;
+                case 'rotation':
+                    player.filters.setRotation(true, { rotationHz: 0.2 });
+                    break;
+                case 'distortion':
+                    player.filters.setDistortion(true, { sinScale: 1, cosScale: 1 });
+                    break;
+                case 'channelmix':
+                    player.filters.setChannelMix(true, { leftToLeft: 0.5, leftToRight: 0.5, rightToLeft: 0.5, rightToRight: 0.5 });
+                    break;
+                case 'lowpass':
+                    player.filters.setLowPass(true, { smoothing: 0.5 });
+                    break;
+                case 'bassboost':
+                    player.filters.setBassboost(true, { value: 3 });
+                    break;
+                case 'nightcore':
+                    player.filters.setTimescale(true, { speed: 1.25, pitch: 1.25, rate: 1.0 });
+                    break;
+                case 'daycore':
+                    player.filters.setTimescale(true, { speed: 1.0, pitch: 0.8, rate: 1.0 });
+                    break;
+                default:
+                    return await sendErrorResponse(
+                        interaction,
+                        t.invalid.title + '\n\n' +
+                        t.invalid.message + '\n' +
+                        t.invalid.note
+                    );
             }
-
-            queue.filters.add(distubeFilterName);
 
             return await sendSuccessResponse(
                 interaction,
@@ -121,7 +136,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { filters: { errors: {} } } }));
             const t = lang.music?.filters?.errors || {};
-
+            
             return await handleCommandError(
                 interaction,
                 error,

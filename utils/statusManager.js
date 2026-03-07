@@ -9,12 +9,12 @@ class StatusManager {
     }
 
     getPlayerInfo(guildId) {
-        const queue = this.client.distube?.getQueue(guildId);
-        if (!queue) return null;
-
+        const player = this.client.riffy?.players?.get(guildId);
+        if (!player) return null;
+        
         return {
-            playing: !queue.paused && queue.songs.length > 0,
-            title: queue.songs[0]?.name || null
+            playing: player.playing,
+            title: player.current?.info?.title || null
         };
     }
 
@@ -63,14 +63,13 @@ class StatusManager {
 
     async setVoiceChannelStatus(guildId, trackTitle) {
         try {
-            const queue = this.client.distube?.getQueue(guildId);
-            const voiceChannelId = queue?.voiceChannel?.id;
-            if (!voiceChannelId) return;
+            const player = this.client.riffy?.players?.get(guildId);
+            if (!player || !player.voiceChannel) return;
 
             const guild = this.client.guilds.cache.get(guildId);
             if (!guild) return;
 
-            const voiceChannel = guild.channels.cache.get(voiceChannelId);
+            const voiceChannel = guild.channels.cache.get(player.voiceChannel);
             if (!voiceChannel) return;
         
             if (!this.voiceChannelData.has(voiceChannel.id)) {
@@ -107,10 +106,9 @@ class StatusManager {
             const botMember = guild.members.me;
             let voiceChannel = null;
     
-            const queue = this.client.distube?.getQueue(guildId);
-            const voiceChannelId = queue?.voiceChannel?.id;
-            if (voiceChannelId) {
-                voiceChannel = guild.channels.cache.get(voiceChannelId);
+            const player = this.client.riffy?.players?.get(guildId);
+            if (player && player.voiceChannel) {
+                voiceChannel = guild.channels.cache.get(player.voiceChannel);
             }
    
             if (!voiceChannel && botMember.voice.channelId) {

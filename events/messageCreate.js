@@ -148,6 +148,27 @@ module.exports = async (client, message) => {
       
       console.error(`${colors.cyan}[ AUTO-PLAY ]${colors.reset} ${colors.red}Error in auto-play:${colors.reset}`, error);
       
+      // Check if error is "No nodes are available"
+      if (errorMsg.includes('No nodes are available')) {
+        const { getLavalinkManager } = require('../lavalink.js');
+        const nodeManager = getLavalinkManager();
+        if (nodeManager) {
+          const nodeCount = nodeManager.getNodeCount();
+          const totalCount = nodeManager.getTotalNodeCount();
+          try {
+            const noNodesMsg = (t.noNodes?.title || '## ❌ No Lavalink Nodes') + '\n\n' +
+              (t.noNodes?.message || 'No Lavalink nodes are currently available ({connected}/{total} connected).')
+                .replace('{connected}', nodeCount)
+                .replace('{total}', totalCount) + '\n' +
+              (t.noNodes?.note || 'The bot is attempting to reconnect. Please try again in a moment.');
+            await message.channel.send(noNodesMsg).catch(() => {});
+          } catch (sendError) {
+            // Ignore send errors
+          }
+          return;
+        }
+      }
+      
       // Send generic error message for other errors
       try {
         const genericErrorMsg = (t.errors?.title || '## ❌ Error') + '\n\n' + (t.errors?.message || 'An error occurred while processing the request.\nPlease try again later.');

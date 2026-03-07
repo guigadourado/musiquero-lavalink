@@ -28,9 +28,9 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.voteskip;
 
-            const queue = client.distube.getQueue(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, queue);
-
+            const player = client.riffy.players.get(interaction.guildId);
+            const check = await checkVoiceChannel(interaction, player);
+            
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -40,8 +40,8 @@ module.exports = {
                 return reply;
             }
 
-            const trackCheck = await checkCurrentTrack(queue, null, interaction.guildId);
-
+            const trackCheck = await checkCurrentTrack(player, null, interaction.guildId);
+            
             if (!trackCheck.valid) {
                 const reply = await interaction.editReply({
                     ...trackCheck.response,
@@ -55,27 +55,25 @@ module.exports = {
             const membersInChannel = voiceChannel.members.filter(m => !m.user.bot).size;
             const requiredVotes = Math.ceil(membersInChannel / 2);
 
-            const currentTrackUrl = queue.songs[0].url;
-
             if (!voteSkipMap.has(interaction.guildId)) {
                 voteSkipMap.set(interaction.guildId, {
                     voters: new Set(),
                     requiredVotes: requiredVotes,
-                    trackUri: currentTrackUrl
+                    trackUri: player.current.info.uri
                 });
             }
 
             const voteData = voteSkipMap.get(interaction.guildId);
 
-            if (voteData.trackUri !== currentTrackUrl) {
+            if (voteData.trackUri !== player.current.info.uri) {
                 voteSkipMap.set(interaction.guildId, {
                     voters: new Set(),
                     requiredVotes: requiredVotes,
-                    trackUri: currentTrackUrl
+                    trackUri: player.current.info.uri
                 });
                 voteData.voters = new Set();
                 voteData.requiredVotes = requiredVotes;
-                voteData.trackUri = currentTrackUrl;
+                voteData.trackUri = player.current.info.uri;
             }
 
             if (voteData.voters.has(interaction.user.id)) {
@@ -93,9 +91,9 @@ module.exports = {
             const currentVotes = voteData.voters.size;
 
             if (currentVotes >= requiredVotes) {
-                await cleanupTrackMessages(client, queue);
-
-                await client.distube.skip(queue.voiceChannel);
+                await cleanupTrackMessages(client, player);
+                
+                player.stop();
                 voteSkipMap.delete(interaction.guildId);
 
                 return await sendSuccessResponse(
@@ -125,7 +123,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { voteskip: { errors: {} } } }));
             const t = lang.music?.voteskip?.errors || {};
-
+            
             return await handleCommandError(
                 interaction,
                 error,

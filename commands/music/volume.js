@@ -31,10 +31,10 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.volume;
 
-            const queue = client.distube.getQueue(interaction.guildId);
+            const player = client.riffy.players.get(interaction.guildId);
             const volume = interaction.options.getInteger('level');
-            const check = await checkVoiceChannel(interaction, queue);
-
+            const check = await checkVoiceChannel(interaction, player);
+            
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -53,7 +53,7 @@ module.exports = {
                 );
             }
 
-            await client.distube.setVolume(queue.voiceChannel, volume);
+            player.setVolume(volume);
 
             let volumeLevel;
             if (volume === 0) volumeLevel = t.success.muted;
@@ -71,7 +71,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { volume: { errors: {} } } }));
             const t = lang.music?.volume?.errors || {};
-
+            
             return await handleCommandError(
                 interaction,
                 error,

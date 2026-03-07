@@ -25,9 +25,9 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.queue;
 
-            const queue = client.distube.getQueue(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, queue);
-
+            const player = client.riffy.players.get(interaction.guildId);
+            const check = await checkVoiceChannel(interaction, player);
+            
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -37,8 +37,8 @@ module.exports = {
                 return reply;
             }
 
-            const queueCheck = await checkQueueOrTrack(queue, null, interaction.guildId);
-
+            const queueCheck = await checkQueueOrTrack(player, null, interaction.guildId);
+            
             if (!queueCheck.valid) {
                 const reply = await interaction.editReply({
                     ...queueCheck.response,
@@ -48,37 +48,37 @@ module.exports = {
                 return reply;
             }
 
-            const currentTrack = queue.songs[0];
-            const upcoming = queue.songs.slice(1);
+            const currentTrack = player.current;
+            const queue = player.queue;
             const songsPerPage = 10;
-            const totalPages = Math.ceil(upcoming.length / songsPerPage) || 1;
+            const totalPages = Math.ceil(queue.length / songsPerPage) || 1;
             let currentPage = 1;
 
             function generateQueuePage(page) {
                 const queueItems = [];
-
+                
                 if (page === 1 && currentTrack) {
                     queueItems.push(
                         t.nowPlaying + '\n' +
                         t.track
-                            .replace('{title}', currentTrack.name)
-                            .replace('{uri}', currentTrack.url) + '\n' +
-                        t.requestedBy.replace('{requester}', currentTrack.member?.user?.username || currentTrack.user?.username || 'Unknown')
+                            .replace('{title}', currentTrack.info.title)
+                            .replace('{uri}', currentTrack.info.uri) + '\n' +
+                        t.requestedBy.replace('{requester}', currentTrack.info.requester || 'Unknown')
                     );
                 }
 
                 const queueStartIndex = (page - 1) * songsPerPage;
-                const queueEndIndex = Math.min(queueStartIndex + songsPerPage, upcoming.length);
-                const paginatedQueue = upcoming.slice(queueStartIndex, queueEndIndex);
-
-                paginatedQueue.forEach((song, index) => {
+                const queueEndIndex = Math.min(queueStartIndex + songsPerPage, queue.length);
+                const paginatedQueue = queue.slice(queueStartIndex, queueEndIndex);
+                
+                paginatedQueue.forEach((track, index) => {
                     const position = queueStartIndex + index + 1;
                     queueItems.push(
                         t.trackNumber.replace('{number}', position) + ' ' +
                         t.track
-                            .replace('{title}', song.name)
-                            .replace('{uri}', song.url) + '\n   ' +
-                        t.requestedBy.replace('{requester}', song.member?.user?.username || song.user?.username || 'Unknown')
+                            .replace('{title}', track.info.title)
+                            .replace('{uri}', track.info.uri) + '\n   ' +
+                        t.requestedBy.replace('{requester}', track.info.requester || 'Unknown')
                     );
                 });
 
@@ -92,7 +92,7 @@ module.exports = {
                 .setAccentColor(embedColor)
                 .addTextDisplayComponents(
                     (textDisplay) => textDisplay.setContent(
-                        (totalPages > 1
+                        (totalPages > 1 
                             ? t.titlePaginated
                                 .replace('{currentPage}', currentPage)
                                 .replace('{totalPages}', totalPages)
@@ -117,10 +117,10 @@ module.exports = {
 
             const row = new ActionRowBuilder().addComponents(prevButton, nextButton);
 
-            const response = await interaction.editReply({
-                components: [...components, row],
+            const response = await interaction.editReply({ 
+                components: [...components, row], 
                 flags: MessageFlags.IsComponentsV2,
-                fetchReply: true
+                fetchReply: true 
             });
             setTimeout(() => response.delete().catch(() => {}), 30000);
 
@@ -151,7 +151,7 @@ module.exports = {
                     prevButton.setDisabled(currentPage === 1);
                     nextButton.setDisabled(currentPage === totalPages);
 
-                    await i.update({
+                    await i.update({ 
                         components: [updatedContainer, row],
                         flags: MessageFlags.IsComponentsV2,
                     });
@@ -168,7 +168,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { queue: { errors: {} } } }));
             const t = lang.music?.queue?.errors || {};
-
+            
             return await handleCommandError(
                 interaction,
                 error,

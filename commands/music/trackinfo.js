@@ -39,9 +39,9 @@ module.exports = {
             const lang = await getLang(interaction.guildId);
             const t = lang.music.trackinfo;
 
-            const queue = client.distube.getQueue(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, queue);
-
+            const player = client.riffy.players.get(interaction.guildId);
+            const check = await checkVoiceChannel(interaction, player);
+            
             if (!check.allowed) {
                 const reply = await interaction.editReply({
                     ...check.response,
@@ -51,8 +51,8 @@ module.exports = {
                 return reply;
             }
 
-            const trackCheck = await checkCurrentTrack(queue, null, interaction.guildId);
-
+            const trackCheck = await checkCurrentTrack(player, null, interaction.guildId);
+            
             if (!trackCheck.valid) {
                 const reply = await interaction.editReply({
                     ...trackCheck.response,
@@ -62,12 +62,10 @@ module.exports = {
                 return reply;
             }
 
-            const currentSong = queue.songs[0];
-            // currentTime is in seconds; convert to ms for formatDuration
-            const positionMs = queue.currentTime * 1000;
-            // duration is in seconds; convert to ms for formatDuration
-            const durationMs = currentSong.duration * 1000;
-            const progress = Math.round((positionMs / durationMs) * 100);
+            const track = player.current.info;
+            const position = player.position;
+            const duration = track.length;
+            const progress = Math.round((position / duration) * 100);
 
             const embedColor = getEmbedColor();
             const components = [];
@@ -78,11 +76,11 @@ module.exports = {
                     (textDisplay) => textDisplay.setContent(
                         t.trackInfo.title + '\n\n' +
                         t.trackInfo.titleLabel
-                            .replace('{title}', currentSong.name)
-                            .replace('{uri}', currentSong.url) + '\n' +
-                        t.trackInfo.artist.replace('{artist}', currentSong.uploader?.name || 'Unknown') + '\n' +
-                        t.trackInfo.duration.replace('{duration}', formatDuration(durationMs)) + '\n' +
-                        t.trackInfo.source.replace('{source}', currentSong.source || 'Unknown')
+                            .replace('{title}', track.title)
+                            .replace('{uri}', track.uri) + '\n' +
+                        t.trackInfo.artist.replace('{artist}', track.author || 'Unknown') + '\n' +
+                        t.trackInfo.duration.replace('{duration}', formatDuration(duration)) + '\n' +
+                        t.trackInfo.source.replace('{source}', track.sourceName || 'Unknown')
                     )
                 );
 
@@ -94,8 +92,8 @@ module.exports = {
                 .addTextDisplayComponents(
                     (textDisplay) => textDisplay.setContent(
                         t.progress.title + '\n\n' +
-                        t.progress.current.replace('{current}', formatDuration(positionMs)) + '\n' +
-                        t.progress.total.replace('{total}', formatDuration(durationMs)) + '\n' +
+                        t.progress.current.replace('{current}', formatDuration(position)) + '\n' +
+                        t.progress.total.replace('{total}', formatDuration(duration)) + '\n' +
                         t.progress.progress.replace('{progress}', progress)
                     )
                 );
@@ -103,22 +101,20 @@ module.exports = {
             components.push(progressContainer);
             components.push(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
 
-            // repeatMode: 0=off, 1=song, 2=queue
-            const loopText = queue.repeatMode === 0 ? 'Off' : queue.repeatMode === 1 ? 'Track' : 'Queue';
-            const statusText = queue.paused ? '⏸️ Paused' : '▶️ Playing';
-            const queueCount = queue.songs.length - 1;
+            const loopText = player.loop === 'none' ? 'Off' : player.loop === 'track' ? 'Track' : 'Queue';
+            const statusText = player.paused ? '⏸️ Paused' : '▶️ Playing';
 
             const statusContainer = new ContainerBuilder()
                 .setAccentColor(embedColor)
                 .addTextDisplayComponents(
                     (textDisplay) => textDisplay.setContent(
                         t.status.title + '\n\n' +
-                        t.status.volume.replace('{volume}', queue.volume) + '\n' +
+                        t.status.volume.replace('{volume}', player.volume) + '\n' +
                         t.status.loop.replace('{loop}', loopText) + '\n' +
                         t.status.status.replace('{status}', statusText) + '\n' +
                         t.status.queue
-                            .replace('{count}', queueCount)
-                            .replace('{plural}', queueCount !== 1 ? 's' : '')
+                            .replace('{count}', player.queue.length)
+                            .replace('{plural}', player.queue.length !== 1 ? 's' : '')
                     )
                 );
 
@@ -135,7 +131,7 @@ module.exports = {
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { trackinfo: { errors: {} } } }));
             const t = lang.music?.trackinfo?.errors || {};
-
+            
             return await handleCommandError(
                 interaction,
                 error,
