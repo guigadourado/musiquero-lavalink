@@ -630,7 +630,9 @@ class LavalinkNodeManager {
             this.reconnectInterval = null;
         }
         if (this.riffy) {
-            this.riffy.destroy();
+            if (typeof this.riffy.destroy === 'function') {
+                this.riffy.destroy();
+            }
             this.riffy = null;
         }
         this.initialized = false;

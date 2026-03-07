@@ -480,18 +480,12 @@ module.exports = {
                 );
             }
 
-            // Wait for player to be connected
-            let connectionAttempts = 0;
-            while (!player.connected && connectionAttempts < 20) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                connectionAttempts++;
-            }
-
-            // Only start playback if we have tracks and player is not already playing
+            // Only start playback if we have tracks and player is not already playing.
+            // Riffy internally handles waiting for voice credentials (up to 10s) in player.play().
             if (player.queue.length > 0 || player.current) {
                 if (!player.playing && !player.paused) {
                     try {
-                        player.play();
+                        await player.play();
                     } catch (error) {
                         console.error(`[ PLAY ] Error starting playback:`, error.message);
                     }

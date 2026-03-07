@@ -73,6 +73,10 @@ async function initializePlayer(client) {
     client.lavalinkManager = nodeManager;
     client.nodeManager = nodeManager;
 
+    client.riffy.on("debug", (...args) => {
+        console.log(`${colors.cyan}[ RIFFY DEBUG ]${colors.reset}`, ...args);
+    });
+
     client.riffy.on("trackException", async (player, error) => {
         const langSync = getLangSync();
         const errorMsg = error?.message || 'Unknown error';
