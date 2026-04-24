@@ -874,7 +874,7 @@ function setupCollector(client, player, channel, message) {
         'player_queue', 'player_shuffle', 'player_filter_select', 'player_filter_clear'
     ].includes(i.customId);
 
-    const collector = message.createMessageComponentCollector({ filter, time: 300000 });
+    const collector = message.createMessageComponentCollector({ filter });
 
     collector.on('collect', async i => {
         const member = i.member;
@@ -1380,7 +1380,7 @@ async function showLyrics(channel, player) {
     const interval = setInterval(updateLyrics, 3000);
     updateLyrics(); 
 
-    const collector = message.createMessageComponentCollector({ time: 300000 });
+    const collector = message.createMessageComponentCollector({});
 
     collector.on('collect', async i => {
         const deferred = await safeDeferUpdate(i);
@@ -1679,4 +1679,4 @@ async function startProgressUpdates(client, guildId, message, player, track) {
     return updateInterval;
 }
 
-module.exports = { initializePlayer, cleanupTrackMessages };
+module.exports = { initializePlayer, cleanupTrackMessages, nowPlayingMessages };

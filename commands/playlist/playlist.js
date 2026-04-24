@@ -854,7 +854,7 @@ async function playPlaylistById(client, interaction, playlistId, lang) {
       if (attempts >= 3) {
         throw error;
       }
-      await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
+      await nodeManager.reconnectNodesNow?.(5000)?.catch(() => {});
       await nodeManager.ensureNodeAvailable().catch(() => {});
       await new Promise(resolve => setTimeout(resolve, 500));
     }
@@ -874,7 +874,7 @@ async function playPlaylistById(client, interaction, playlistId, lang) {
     } catch (resolveError) {
       const message = resolveError?.message || '';
       if (message.includes('fetch failed') || message.includes('No nodes are available') || (resolveError.cause && resolveError.cause.code === 'ECONNREFUSED')) {
-        await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
+        await nodeManager.reconnectNodesNow?.(5000)?.catch(() => {});
         await nodeManager.ensureNodeAvailable().catch(() => {});
         resolveResult = await client.riffy.resolve({ query, requester: interaction.user.username });
       } else {

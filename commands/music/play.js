@@ -207,7 +207,7 @@ module.exports = {
                     attempts++;
                     const msg = err?.message || '';
                     if (attempts < maxAttempts && (msg.includes('No nodes are available') || msg.includes('fetch failed'))) {
-                        await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
+                        await nodeManager.reconnectNodesNow?.(5000)?.catch(() => {});
                         await nodeManager.ensureNodeAvailable();
                         await new Promise(res => setTimeout(res, 700));
                         continue;
@@ -259,7 +259,7 @@ module.exports = {
                 } catch (err) {
                     const msg = err?.message || '';
                     if (msg.includes('fetch failed') || msg.includes('No nodes are available') || (err.cause && err.cause.code === 'ECONNREFUSED')) {
-                        await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
+                        await nodeManager.reconnectNodesNow?.(5000)?.catch(() => {});
                         await nodeManager.ensureNodeAvailable();
                         resolve = await client.riffy.resolve({ query, requester: interaction.user.username });
                     } else {

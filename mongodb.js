@@ -36,6 +36,7 @@ async function connectToDatabase() {
         } catch (err) {
             console.warn("\x1b[33m[ WARNING ]\x1b[0m " + (lang.console?.mongodb?.connectionFailed || "Could not connect to MongoDB. Continuing without database functionality."));
             console.error(err.message);
+            throw err;
         }
     } catch (e) {
         if (!client) {
@@ -51,6 +52,7 @@ async function connectToDatabase() {
         } catch (err) {
             console.warn("\x1b[33m[ WARNING ]\x1b[0m Could not connect to MongoDB. Continuing without database functionality.");
             console.error(err.message);
+            throw err;
         }
     }
 }
