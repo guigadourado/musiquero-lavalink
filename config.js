@@ -11,6 +11,7 @@ module.exports = {
   commandsDir: './commands',  
   embedColor: "#1db954",
   musicChannelId: "1449954292441288825",  // Restrict music slash commands to this channel (null = any channel)
+  autoPlayChannels: ["1449954292441288825"],  // Messages typed in these channels trigger /play automatically
   customEmoji: true,  // true = use custom emoji IDs from emoji.js, false = use default unicode
   emojiTheme: "redwhite", // active custom emoji theme key in emoji.js
   helpBannerUrl: "https://i.ibb.co/GfTxbJfC/7-edited.png", // Optional: set a direct image URL to show an inline banner in /help
