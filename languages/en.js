@@ -153,6 +153,24 @@ module.exports = {
             reset: "To reset to global default, use `/language reset`"
         }
     },
+    clean: {
+        command: {
+            name: "clean",
+            description: "Clean all messages from the channel, keeping only the current playing track info"
+        },
+        noPermission: {
+            title: "## ❌ Permission Denied",
+            message: "You need the **Manage Messages** permission to use this command."
+        },
+        botNoPermission: {
+            title: "## ❌ Bot Permission Missing",
+            message: "The bot needs the **Manage Messages** permission to clean messages."
+        },
+        errors: {
+            title: "## ❌ Error",
+            message: "An error occurred while cleaning messages.\nPlease try again later."
+        }
+    },
     ping: {
         command: {
             name: "ping",
