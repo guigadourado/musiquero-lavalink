@@ -22,7 +22,12 @@ module.exports = {
         );
       }
 
-      if (!interaction.guild.members.me.permissions.has(PermissionFlagsBits.ManageMessages)) {
+      await interaction.deferReply({ ephemeral: true });
+
+      const channel = interaction.channel;
+      const guildId = interaction.guildId;
+
+      if (!channel.permissionsFor(interaction.guild.members.me).has(PermissionFlagsBits.ManageMessages)) {
         return sendErrorResponse(
           interaction,
           t.botNoPermission.title + '\n\n' + t.botNoPermission.message,
@@ -30,17 +35,12 @@ module.exports = {
         );
       }
 
-      await interaction.deferReply({ ephemeral: true });
-
-      const channel = interaction.channel;
-      const guildId = interaction.guildId;
-
       const nowPlaying = nowPlayingMessages.get(guildId);
       const nowPlayingMessageId = nowPlaying && nowPlaying.channelId === channel.id ? nowPlaying.messageId : null;
 
       let totalDeleted = 0;
       let lastMessageId = null;
-      const maxAge = 14 * 24 * 60 * 60 * 1000;
+      const bulkDeleteCutoff = 14 * 24 * 60 * 60 * 1000;
       const now = Date.now();
 
       while (true) {
@@ -51,7 +51,6 @@ module.exports = {
         if (messages.size === 0) break;
 
         const messagesToDelete = messages.filter(msg => {
-          if (now - msg.createdTimestamp > maxAge) return false;
           if (nowPlayingMessageId && msg.id === nowPlayingMessageId) return false;
           return true;
         });
@@ -62,11 +61,13 @@ module.exports = {
           continue;
         }
 
-        const batches = [];
-        const arr = Array.from(messagesToDelete.values());
-        for (let i = 0; i < arr.length; i += 100) batches.push(arr.slice(i, i + 100));
+        const recent = messagesToDelete.filter(msg => now - msg.createdTimestamp <= bulkDeleteCutoff);
+        const old = messagesToDelete.filter(msg => now - msg.createdTimestamp > bulkDeleteCutoff);
 
-        for (const batch of batches) {
+        // Bulk delete messages younger than 14 days
+        const recentArr = Array.from(recent.values());
+        for (let i = 0; i < recentArr.length; i += 100) {
+          const batch = recentArr.slice(i, i + 100);
           try {
             if (batch.length > 1) {
               await channel.bulkDelete(batch, true);
@@ -76,15 +77,19 @@ module.exports = {
               totalDeleted++;
             }
           } catch (err) {
-            if (err.code === 50034) {
-              for (const msg of batch) {
-                try { await msg.delete(); totalDeleted++; } catch (e) {
-                  if (!e.message?.includes('Unknown Message')) console.error('Error deleting message:', e);
-                }
+            // Fall back to individual deletes if bulk fails
+            for (const msg of batch) {
+              try { await msg.delete(); totalDeleted++; } catch (e) {
+                if (!e.message?.includes('Unknown Message')) console.error('Error deleting message:', e);
               }
-            } else {
-              console.error('Error in bulk delete:', err);
             }
+          }
+        }
+
+        // Individually delete messages older than 14 days (bulkDelete can't handle these)
+        for (const msg of old.values()) {
+          try { await msg.delete(); totalDeleted++; } catch (e) {
+            if (!e.message?.includes('Unknown Message')) console.error('Error deleting old message:', e);
           }
         }
 
