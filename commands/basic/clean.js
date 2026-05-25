@@ -86,11 +86,18 @@ module.exports = {
           }
         }
 
-        // Individually delete messages older than 14 days (bulkDelete can't handle these)
-        for (const msg of old.values()) {
-          try { await msg.delete(); totalDeleted++; } catch (e) {
-            if (!e.message?.includes('Unknown Message')) console.error('Error deleting old message:', e);
-          }
+        // Delete messages older than 14 days in parallel batches of 10
+        const oldArr = Array.from(old.values());
+        for (let i = 0; i < oldArr.length; i += 10) {
+          const chunk = oldArr.slice(i, i + 10);
+          const results = await Promise.allSettled(chunk.map(msg => msg.delete()));
+          results.forEach((result, idx) => {
+            if (result.status === 'fulfilled') {
+              totalDeleted++;
+            } else if (!result.reason?.message?.includes('Unknown Message')) {
+              console.error('Error deleting old message:', result.reason);
+            }
+          });
         }
 
         lastMessageId = messages.last()?.id;

@@ -262,19 +262,19 @@ module.exports = {
 
             if (query.includes('spotify.com')) {
                 try {
-                    const spotifyData = await getData(query);
-
-                    if (spotifyData.type === 'track') {
-                        const trackName = `${spotifyData.name} - ${spotifyData.artists.map(a => a.name).join(', ')}`;
-                        tracksToQueue.push(trackName);
-                    } else if (spotifyData.type === 'playlist') {
-                        isPlaylist = true;
-                        const playlistId = query.split('/playlist/')[1].split('?')[0];
-                        tracksToQueue = await getSpotifyPlaylistTracks(playlistId);
-                    } else if (spotifyData.type === 'album') {
+                    if (query.includes('/album/')) {
                         isPlaylist = true;
                         const albumId = query.split('/album/')[1].split('?')[0];
                         tracksToQueue = await getSpotifyAlbumTracks(albumId);
+                    } else if (query.includes('/playlist/')) {
+                        isPlaylist = true;
+                        const playlistId = query.split('/playlist/')[1].split('?')[0];
+                        tracksToQueue = await getSpotifyPlaylistTracks(playlistId);
+                    } else {
+                        // Single track
+                        const spotifyData = await getData(query);
+                        const trackName = `${spotifyData.name} - ${spotifyData.artists.map(a => a.name).join(', ')}`;
+                        tracksToQueue.push(trackName);
                     }
                 } catch (err) {
                     console.error('Error fetching Spotify data:', err);
