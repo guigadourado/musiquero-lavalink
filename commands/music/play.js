@@ -79,6 +79,36 @@ async function getSpotifyPlaylistTracks(playlistId) {
     }
 }
 
+async function getSpotifyAlbumTracks(albumId) {
+    try {
+        const data = await spotifyApi.clientCredentialsGrant();
+        spotifyApi.setAccessToken(data.body.access_token);
+
+        let tracks = [];
+        let offset = 0;
+        const limit = 50; // album tracks endpoint max is 50
+        let total = 0;
+
+        do {
+            const response = await spotifyApi.getAlbumTracks(albumId, { limit, offset });
+            total = response.body.total;
+            offset += limit;
+
+            for (const item of response.body.items) {
+                if (item.name && item.artists) {
+                    const trackName = `${item.name} - ${item.artists.map(a => a.name).join(', ')}`;
+                    tracks.push(trackName);
+                }
+            }
+        } while (tracks.length < total);
+
+        return tracks;
+    } catch (error) {
+        console.error("Error fetching Spotify album tracks:", error);
+        return [];
+    }
+}
+
 module.exports = {
     data: data,
     run: async (client, interaction) => {
@@ -239,8 +269,12 @@ module.exports = {
                         tracksToQueue.push(trackName);
                     } else if (spotifyData.type === 'playlist') {
                         isPlaylist = true;
-                        const playlistId = query.split('/playlist/')[1].split('?')[0]; 
+                        const playlistId = query.split('/playlist/')[1].split('?')[0];
                         tracksToQueue = await getSpotifyPlaylistTracks(playlistId);
+                    } else if (spotifyData.type === 'album') {
+                        isPlaylist = true;
+                        const albumId = query.split('/album/')[1].split('?')[0];
+                        tracksToQueue = await getSpotifyAlbumTracks(albumId);
                     }
                 } catch (err) {
                     console.error('Error fetching Spotify data:', err);
