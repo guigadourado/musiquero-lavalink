@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const config = require('../../config.js');
-const SpotifyWebApi = require('spotify-web-api-node');
 const { getData } = require('spotify-url-info')(require('node-fetch'));
 const { sendErrorResponse, handleCommandError, safeDeferReply, buildPaleCard, sanitizeTitle, stripLeadingIcons } = require('../../utils/responseHandler.js');
 const { checkVoiceChannel: checkVC } = require('../../utils/voiceChannelCheck.js');
@@ -33,11 +32,6 @@ const data = new SlashCommandBuilder()
       .setAutocomplete(true)
   );
 
-const spotifyApi = new SpotifyWebApi({
-    clientId: config.spotifyClientId, 
-    clientSecret: config.spotifyClientSecret,
-});
-
 async function waitForPlayerConnection(player, timeoutMs = 7000) {
     const startedAt = Date.now();
     while (Date.now() - startedAt < timeoutMs) {
@@ -49,65 +43,6 @@ async function waitForPlayerConnection(player, timeoutMs = 7000) {
     return false;
 }
 
-async function getSpotifyPlaylistTracks(playlistId) {
-    try {
-        const data = await spotifyApi.clientCredentialsGrant();
-        spotifyApi.setAccessToken(data.body.access_token);
-
-        let tracks = [];
-        let offset = 0;
-        let limit = 100;
-        let total = 0;
-
-        do {
-            const response = await spotifyApi.getPlaylistTracks(playlistId, { limit, offset });
-            total = response.body.total;
-            offset += limit;
-
-            for (const item of response.body.items) {
-                if (item.track && item.track.name && item.track.artists) {
-                    const trackName = `${item.track.name} - ${item.track.artists.map(a => a.name).join(', ')}`;
-                    tracks.push(trackName);
-                }
-            }
-        } while (tracks.length < total);
-
-        return tracks;
-    } catch (error) {
-        console.error("Error fetching Spotify playlist tracks:", error);
-        return [];
-    }
-}
-
-async function getSpotifyAlbumTracks(albumId) {
-    try {
-        const data = await spotifyApi.clientCredentialsGrant();
-        spotifyApi.setAccessToken(data.body.access_token);
-
-        let tracks = [];
-        let offset = 0;
-        const limit = 50; // album tracks endpoint max is 50
-        let total = 0;
-
-        do {
-            const response = await spotifyApi.getAlbumTracks(albumId, { limit, offset });
-            total = response.body.total;
-            offset += limit;
-
-            for (const item of response.body.items) {
-                if (item.name && item.artists) {
-                    const trackName = `${item.name} - ${item.artists.map(a => a.name).join(', ')}`;
-                    tracks.push(trackName);
-                }
-            }
-        } while (tracks.length < total);
-
-        return tracks;
-    } catch (error) {
-        console.error("Error fetching Spotify album tracks:", error);
-        return [];
-    }
-}
 
 module.exports = {
     data: data,
@@ -262,19 +197,34 @@ module.exports = {
 
             if (query.includes('spotify.com')) {
                 try {
+                    const spotifyData = await getData(query);
+
                     if (query.includes('/album/')) {
                         isPlaylist = true;
-                        const albumId = query.split('/album/')[1].split('?')[0];
-                        tracksToQueue = await getSpotifyAlbumTracks(albumId);
+                        const items = spotifyData.tracks?.items || [];
+                        tracksToQueue = items
+                            .filter(t => t.name && t.artists)
+                            .map(t => `${t.name} - ${t.artists.map(a => a.name).join(', ')}`);
                     } else if (query.includes('/playlist/')) {
                         isPlaylist = true;
-                        const playlistId = query.split('/playlist/')[1].split('?')[0];
-                        tracksToQueue = await getSpotifyPlaylistTracks(playlistId);
+                        const items = spotifyData.tracks?.items || [];
+                        tracksToQueue = items
+                            .filter(item => item.track?.name && item.track?.artists)
+                            .map(item => `${item.track.name} - ${item.track.artists.map(a => a.name).join(', ')}`);
                     } else {
                         // Single track
-                        const spotifyData = await getData(query);
                         const trackName = `${spotifyData.name} - ${spotifyData.artists.map(a => a.name).join(', ')}`;
                         tracksToQueue.push(trackName);
+                    }
+
+                    if (isPlaylist && tracksToQueue.length === 0) {
+                        return sendErrorResponse(
+                            interaction,
+                            t.spotifyError.title + '\n\n' +
+                            t.spotifyError.message + '\n' +
+                            t.spotifyError.note,
+                            5000
+                        );
                     }
                 } catch (err) {
                     console.error('Error fetching Spotify data:', err);
