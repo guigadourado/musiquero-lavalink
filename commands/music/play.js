@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const config = require('../../config.js');
-const { getData } = require('spotify-url-info')(require('node-fetch'));
+const { getData, getTracks } = require('spotify-url-info')(require('node-fetch'));
 const { sendErrorResponse, handleCommandError, safeDeferReply, buildPaleCard, sanitizeTitle, stripLeadingIcons } = require('../../utils/responseHandler.js');
 const { checkVoiceChannel: checkVC } = require('../../utils/voiceChannelCheck.js');
 const { getLavalinkManager } = require('../../lavalink.js');
@@ -197,22 +197,15 @@ module.exports = {
 
             if (query.includes('spotify.com')) {
                 try {
-                    const spotifyData = await getData(query);
-
-                    if (query.includes('/album/')) {
+                    if (query.includes('/album/') || query.includes('/playlist/')) {
                         isPlaylist = true;
-                        const items = spotifyData.tracks?.items || [];
-                        tracksToQueue = items
-                            .filter(t => t.name && t.artists)
-                            .map(t => `${t.name} - ${t.artists.map(a => a.name).join(', ')}`);
-                    } else if (query.includes('/playlist/')) {
-                        isPlaylist = true;
-                        const items = spotifyData.tracks?.items || [];
-                        tracksToQueue = items
-                            .filter(item => item.track?.name && item.track?.artists)
-                            .map(item => `${item.track.name} - ${item.track.artists.map(a => a.name).join(', ')}`);
+                        const tracks = await getTracks(query);
+                        tracksToQueue = tracks
+                            .filter(t => t.name && t.artist)
+                            .map(t => `${t.name} - ${t.artist}`);
                     } else {
                         // Single track
+                        const spotifyData = await getData(query);
                         const trackName = `${spotifyData.name} - ${spotifyData.artists.map(a => a.name).join(', ')}`;
                         tracksToQueue.push(trackName);
                     }
