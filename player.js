@@ -451,9 +451,13 @@ async function initializePlayer(client) {
         }
         if (player && !player.destroyed) {
             try {
-                player.stop();
+                if (player.queue.length === 0) {
+                    player.destroy();
+                } else {
+                    player.stop();
+                }
             } catch (stopError) {
-                // Ignore errors when stopping
+                // Ignore
             }
         }
     });
@@ -469,12 +473,16 @@ async function initializePlayer(client) {
             console.error(`${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.red}${lang.console?.player?.trackStuck?.replace('{guildId}', player?.guildId || 'unknown').replace('{message}', errorMsg) || `Track Stuck for guild ${player?.guildId || 'unknown'}: ${errorMsg}`}${colors.reset}`);
         }
         
-        // Only stop if player is valid and not destroyed
         if (player && !player.destroyed) {
             try {
-                player.stop();
+                if (player.queue.length === 0) {
+                    // Nothing left to play — destroy cleanly to avoid Riffy throwing on empty queue
+                    player.destroy();
+                } else {
+                    player.stop();
+                }
             } catch (stopError) {
-                // Ignore errors when stopping stuck track
+                // Ignore
             }
         }
     });

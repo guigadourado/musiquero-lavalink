@@ -25,7 +25,8 @@ process.on('unhandledRejection', (error) => {
         error.message.includes('track.info') ||
         error.message.includes('thumbnail') ||
         error.message.includes('player.restart is not a function') ||
-        error.message.includes('restart is not a function')
+        error.message.includes('restart is not a function') ||
+        error.message.includes('Queue is empty')
     )) {
    
         if (error.message.includes('player.restart') || error.message.includes('restart is not a function')) {
