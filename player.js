@@ -24,6 +24,7 @@ const nowPlayingMessages = new Map();
 const progressUpdateIntervals = new Map();
 const guildActiveFilter = new Map();
 const guildTrackMediaCache = new Map();
+const interruptedPositions = new Map(); // guildId -> { uri, position, savedAt }
 const musicCard = new EnhancedMusicCard();
 const useGeneratedSongCard = config.generateSongCard !== false;
 const enableVoiceChannelIdPatch = config.enableVoiceChannelIdPatch === true;
@@ -413,6 +414,19 @@ async function initializePlayer(client) {
         }
     });
 
+    client.riffy.on("nodeDisconnect", (node) => {
+        for (const [guildId, p] of client.riffy.players) {
+            if (p.current && typeof p.position === 'number' && p.position > 5000 && !p.current.info.isStream) {
+                interruptedPositions.set(guildId, {
+                    uri: p.current.info.uri,
+                    position: p.position,
+                    savedAt: Date.now()
+                });
+                console.log(`${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Node ${node?.name || 'unknown'} dropped — saved ${Math.round(p.position / 1000)}s for guild ${guildId}${colors.reset}`);
+            }
+        }
+    });
+
     client.riffy.on("trackException", async (player, error) => {
         const langSync = getLangSync();
         const errorMsg = error?.message || 'Unknown error';
@@ -505,6 +519,26 @@ async function initializePlayer(client) {
 
         if (client.statusManager && track.info.title) {
             await client.statusManager.onTrackStart(player.guildId).catch(() => {});
+        }
+
+        // Seek back to interrupted position if this track was restarted by a node drop
+        const savedResume = interruptedPositions.get(player.guildId);
+        if (savedResume
+            && savedResume.uri === track.info.uri
+            && savedResume.position > 5000
+            && !track.info.isStream
+            && (Date.now() - savedResume.savedAt) < 120000) {
+            const resumeAt = savedResume.position;
+            interruptedPositions.delete(player.guildId);
+            setTimeout(() => {
+                const p = client.riffy.players.get(player.guildId);
+                if (p && !p.destroyed && p.current?.info?.uri === savedResume.uri) {
+                    try {
+                        p.seek(resumeAt);
+                        console.log(`${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.green}Resumed at ${Math.round(resumeAt / 1000)}s for guild ${player.guildId}${colors.reset}`);
+                    } catch (_) {}
+                }
+            }, 3000);
         }
 
         const channel = client.channels.cache.get(player.textChannel);
