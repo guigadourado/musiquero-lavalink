@@ -235,10 +235,24 @@ module.exports = {
                     resolve = await client.riffy.resolve({ query, requester: interaction.user.username });
                 } catch (err) {
                     const msg = err?.message || '';
-                    if (msg.includes('fetch failed') || msg.includes('No nodes are available') || (err.cause && err.cause.code === 'ECONNREFUSED')) {
+                    const isNodeUnavailable = msg.includes('fetch failed') ||
+                        msg.includes('No nodes are available') ||
+                        msg.includes('Cannot read properties of null') ||
+                        msg.includes('loadType') ||
+                        (err.cause && err.cause.code === 'ECONNREFUSED');
+                    if (isNodeUnavailable) {
                         await nodeManager.reconnectNodesNow?.(5000)?.catch(() => {});
-                        await nodeManager.ensureNodeAvailable();
-                        resolve = await client.riffy.resolve({ query, requester: interaction.user.username });
+                        await nodeManager.ensureNodeAvailable().catch(() => {});
+                        try {
+                            resolve = await client.riffy.resolve({ query, requester: interaction.user.username });
+                        } catch (retryErr) {
+                            return sendErrorResponse(
+                                interaction,
+                                t.noNodesAvailable?.title || '## ⚠️ No Music Nodes Available' + '\n\n' +
+                                (t.noNodesAvailable?.message || 'All music servers are currently offline. Please try again in a moment.'),
+                                5000
+                            );
+                        }
                     } else {
                         throw err;
                     }
