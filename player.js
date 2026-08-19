@@ -656,6 +656,7 @@ async function initializePlayer(client) {
     client.riffy.on("trackEnd", async (player) => {
         const guildId = player.guildId;
         clearTrackMediaCache(guildId);
+        if (player.current?.info?.uri) requesters.delete(player.current.info.uri);
         
         if (client.statusManager) {
             await client.statusManager.onTrackEnd(guildId).catch(() => {});
