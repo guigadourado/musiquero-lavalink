@@ -415,28 +415,36 @@ async function initializePlayer(client) {
         }
     });
 
+    // Update position tracker on every real Lavalink position report
+    client.riffy.on("playerUpdate", (player, data) => {
+        const position = data?.state?.position ?? data?.position;
+        if (typeof position === 'number' && player.current && !player.current.info.isStream) {
+            guildPositionTracker.set(player.guildId, { position, updatedAt: Date.now() });
+        }
+    });
+
     client.riffy.on("nodeDisconnect", (node) => {
         const now = Date.now();
         for (const [guildId, p] of client.riffy.players) {
-            if (p.current && !p.current.info.isStream) {
-                // Extrapolate from our tracker (which has the last polled position + when we polled it)
-                // so we aren't stuck with whatever stale value Lavalink last reported.
-                const tracked = guildPositionTracker.get(guildId);
-                let resumePosition;
-                if (tracked && tracked.updatedAt && typeof tracked.position === 'number') {
-                    const elapsed = now - tracked.updatedAt;
-                    resumePosition = tracked.position + elapsed;
-                } else if (typeof p.position === 'number') {
-                    resumePosition = p.position;
-                }
-                if (resumePosition > 5000) {
-                    interruptedPositions.set(guildId, {
-                        uri: p.current.info.uri,
-                        position: resumePosition,
-                        savedAt: now
-                    });
-                    console.log(`${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Node ${node?.name || 'unknown'} dropped — saved ${Math.round(resumePosition / 1000)}s for guild ${guildId}${colors.reset}`);
-                }
+            // Only save for players actually using the disconnecting node
+            if (p.node?.name !== node?.name && p.node !== node) continue;
+            if (!p.current || p.current.info.isStream) continue;
+
+            const tracked = guildPositionTracker.get(guildId);
+            let resumePosition;
+            if (tracked && tracked.updatedAt && typeof tracked.position === 'number') {
+                const elapsed = now - tracked.updatedAt;
+                resumePosition = tracked.position + elapsed;
+            } else if (typeof p.position === 'number' && p.position > 0) {
+                resumePosition = p.position;
+            }
+            if (resumePosition > 5000) {
+                interruptedPositions.set(guildId, {
+                    uri: p.current.info.uri,
+                    position: resumePosition,
+                    savedAt: now
+                });
+                console.log(`${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Node ${node?.name || 'unknown'} dropped — saved ${Math.round(resumePosition / 1000)}s for guild ${guildId}${colors.reset}`);
             }
         }
     });
@@ -555,17 +563,8 @@ async function initializePlayer(client) {
             }, 3000);
         }
 
-        // Start a lightweight position tracker so nodeDisconnect can extrapolate accurately
+        // Seed the tracker at track start so extrapolation has a baseline
         guildPositionTracker.set(player.guildId, { position: 0, updatedAt: Date.now() });
-        const positionTrackUri = track.info.uri;
-        const positionInterval = setInterval(() => {
-            const p = client.riffy.players.get(player.guildId);
-            if (!p || p.destroyed || p.current?.info?.uri !== positionTrackUri) {
-                clearInterval(positionInterval);
-                return;
-            }
-            guildPositionTracker.set(player.guildId, { position: p.position, updatedAt: Date.now() });
-        }, 5000);
 
         const channel = client.channels.cache.get(player.textChannel);
         if (!channel) {
