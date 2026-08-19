@@ -26,13 +26,20 @@ module.exports = {
   lowMemoryMode: true,   // Performance optimizations for low-memory environments (512MB RAM)
   errorLog: "", 
   nodes: [
-    // ✅ Verified online — last checked 2026-04-30
+    // ✅ Verified online — last checked 2026-08-19
     {
-      name: "Serenetia V3/V4",
+      name: "Serenetia",
       password: "https://dsc.gg/ajidevserver",
       host: "lavalink.serenetia.com",
       port: 443,
       secure: true
+    },
+    {
+      name: "Serenetia NonSSL",
+      password: "https://seretia.link/discord",
+      host: "lavalinkv4.serenetia.com",
+      port: 80,
+      secure: false
     },
     {
       name: "GlaceYT",
@@ -49,10 +56,17 @@ module.exports = {
       secure: false
     },
     {
-      name: "Snowly",
-      password: "ghop",
-      host: "45.13.236.245",
-      port: 26111,
+      name: "Jirayu",
+      password: "youshallnotpass",
+      host: "lavalink.jirayu.net",
+      port: 13592,
+      secure: false
+    },
+    {
+      name: "Kasawa",
+      password: "youshallnotpass",
+      host: "lava2.kasawa.pro",
+      port: 2334,
       secure: false
     },
   ]
