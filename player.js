@@ -634,7 +634,8 @@ async function initializePlayer(client) {
         const prevWatchdog = silentWatchdogs.get(player.guildId);
         if (prevWatchdog) { clearTimeout(prevWatchdog); silentWatchdogs.delete(player.guildId); }
 
-        // Silent-playback watchdog: if position hasn't moved after 15s, the node silently failed
+        // Silent-playback watchdog: if position hasn't moved after 15s, the node silently failed.
+        // On each retry we destroy + recreate the player to force Riffy to pick a (different) node.
         if (!track.info.isStream) {
             const watchdogUri = track.info.uri;
             const watchdogGuildId = player.guildId;
@@ -644,29 +645,58 @@ async function initializePlayer(client) {
                 silentWatchdogs.delete(watchdogGuildId);
                 const p = client.riffy.players.get(watchdogGuildId);
                 if (!p || p.destroyed || p.current?.info?.uri !== watchdogUri || p.paused) return;
-                if (p.position >= 3000) return; // it's actually playing fine
+                if (p.position >= 5000) return; // it's playing fine
 
-                // Count retries for this track
                 const retryData = silentRetryCount.get(watchdogGuildId) || { uri: null, count: 0 };
-                const isNewTrack = retryData.uri !== watchdogUri;
-                const currentCount = isNewTrack ? 0 : retryData.count;
-
+                const currentCount = retryData.uri === watchdogUri ? retryData.count : 0;
                 const ch = client.channels.cache.get(p.textChannel);
+
+                // Snapshot everything we need before destroy
+                const savedTrack = p.current;
+                const savedQueue = p.queue ? p.queue.slice(0) : [];
+                const savedVoiceChannel = p.voiceChannel;
+                const savedTextChannel = p.textChannel;
 
                 if (currentCount < MAX_SILENT_RETRIES) {
                     silentRetryCount.set(watchdogGuildId, { uri: watchdogUri, count: currentCount + 1 });
-                    console.warn(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.yellow}Silent playback detected for guild ${watchdogGuildId} — retry ${currentCount + 1}/${MAX_SILENT_RETRIES}${colors.reset}`);
-                    if (ch) sendTransientCard(ch, `⚠️ **Track failed to start — retrying (${currentCount + 1}/${MAX_SILENT_RETRIES})...**`, 5000, 'Playback Retry').catch(() => {});
-                    silentRetryTracks.set(watchdogGuildId, p.current);
-                } else {
-                    silentRetryCount.delete(watchdogGuildId);
-                    console.warn(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.yellow}Silent playback: giving up after ${MAX_SILENT_RETRIES} retries for guild ${watchdogGuildId}${colors.reset}`);
-                    if (ch) sendTransientCard(ch, `⚠️ **Track failed to load after ${MAX_SILENT_RETRIES} retries. Skipping.**`, 5000, 'Playback Failed').catch(() => {});
-                }
+                    console.warn(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.yellow}Silent playback — guild ${watchdogGuildId} retry ${currentCount + 1}/${MAX_SILENT_RETRIES} (switching node)${colors.reset}`);
+                    if (ch) sendTransientCard(ch, `⚠️ **Audio node failed — switching server and retrying (${currentCount + 1}/${MAX_SILENT_RETRIES})...**`, 6000, 'Playback Retry').catch(() => {});
 
-                try {
-                    if (p && !p.destroyed) p.stop();
-                } catch (_) {}
+                    // Destroy current player (releases node binding), then recreate on a fresh node
+                    try { if (!p.destroyed) p.destroy(); } catch (_) {}
+
+                    setTimeout(async () => {
+                        try {
+                            const newPlayer = client.riffy.createPlayer({
+                                guildId: watchdogGuildId,
+                                voiceChannel: savedVoiceChannel,
+                                textChannel: savedTextChannel,
+                                deaf: true
+                            });
+                            await newPlayer.connect();
+                            await new Promise(r => setTimeout(r, 800)); // let voice handshake settle
+
+                            if (savedTrack) newPlayer.queue.add(savedTrack);
+                            for (const t of savedQueue) newPlayer.queue.add(t);
+
+                            if (!newPlayer.playing && !newPlayer.paused) await newPlayer.play();
+                        } catch (e) {
+                            console.error(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.red}Silent retry recreate failed: ${e.message}${colors.reset}`);
+                            const ch2 = client.channels.cache.get(savedTextChannel);
+                            if (ch2) sendTransientCard(ch2, '⚠️ **Failed to reconnect. Use /play to try again.**', 6000, 'Error').catch(() => {});
+                        }
+                    }, 1500);
+                } else {
+                    // All retries exhausted — destroy and leave channel
+                    silentRetryCount.delete(watchdogGuildId);
+                    silentRetryTracks.delete(watchdogGuildId);
+                    console.warn(`${colors.cyan}[ PLAYER ]${colors.reset} ${colors.yellow}Silent playback: giving up for guild ${watchdogGuildId} after ${MAX_SILENT_RETRIES} retries${colors.reset}`);
+                    if (ch) sendTransientCard(ch, `⚠️ **Track failed on all servers after ${MAX_SILENT_RETRIES} retries. Disconnecting.**`, 6000, 'Playback Failed').catch(() => {});
+                    try {
+                        await cleanupTrackMessages(client, p);
+                        if (!p.destroyed) p.destroy();
+                    } catch (_) {}
+                }
             }, 15000);
             silentWatchdogs.set(player.guildId, watchdogId);
         }
@@ -833,25 +863,6 @@ async function initializePlayer(client) {
         // Cancel any pending watchdog for this guild
         const wd = silentWatchdogs.get(guildId);
         if (wd) { clearTimeout(wd); silentWatchdogs.delete(guildId); }
-
-        // If this track end was triggered by a silent-playback retry, prepend the track back to queue
-        const retryTrack = silentRetryTracks.get(guildId);
-        if (retryTrack) {
-            silentRetryTracks.delete(guildId);
-            try {
-                // unshift to front if queue is array-like; fall back to clear+rebuild
-                if (typeof player.queue.unshift === 'function') {
-                    player.queue.unshift(retryTrack);
-                } else {
-                    const rest = player.queue.slice(0);
-                    player.queue.clear();
-                    player.queue.add(retryTrack);
-                    for (const t of rest) player.queue.add(t);
-                }
-            } catch (_) {
-                player.queue.add(retryTrack); // worst case: add to end
-            }
-        }
 
         if (player.current?.info?.uri) requesters.delete(player.current.info.uri);
         
