@@ -400,6 +400,67 @@ async function sendTransientCard(channel, message, deleteMs = 5000, fallbackTitl
     return sent;
 }
 
+async function betterAutoplay(client, player) {
+    const seed = player.previousTrack || player.current;
+    const guildId = player.guildId;
+
+    // Load recent history so we can avoid replaying it
+    let recentUris = new Set();
+    try {
+        const historyDoc = await playlistCollection.findOne({ guildId, name: '__HISTORY__' });
+        if (historyDoc?.songs?.length) {
+            for (const uri of historyDoc.songs.slice(-30)) recentUris.add(uri);
+        }
+    } catch (_) {}
+
+    let candidates = [];
+
+    // Strategy 1: YouTube Radio/Mix — uses YouTube's actual recommendation engine
+    if (seed?.info?.identifier) {
+        try {
+            const radioUrl = `https://www.youtube.com/watch?v=${seed.info.identifier}&list=RD${seed.info.identifier}`;
+            const resolve = await client.riffy.resolve({ query: radioUrl, requester: 'autoplay' });
+            if (resolve?.tracks?.length > 1) {
+                candidates = resolve.tracks.filter(t =>
+                    t.info?.uri !== seed.info.uri && !recentUris.has(t.info?.uri)
+                );
+            }
+        } catch (_) {}
+    }
+
+    // Strategy 2: YouTube Music search if radio failed (ytmsearch gives better results than ytsearch)
+    if (!candidates.length && seed?.info) {
+        try {
+            const q = `ytmsearch:${[seed.info.author, seed.info.title].filter(Boolean).join(' ')} mix`;
+            const resolve = await client.riffy.resolve({ query: q, requester: 'autoplay' });
+            if (resolve?.tracks?.length) {
+                candidates = resolve.tracks.filter(t =>
+                    t.info?.uri !== seed?.info?.uri && !recentUris.has(t.info?.uri)
+                );
+            }
+        } catch (_) {}
+    }
+
+    // Strategy 3: fall back to Riffy's built-in autoplay
+    if (!candidates.length) {
+        try {
+            return await player.autoplay(player);
+        } catch (_) {
+            return null;
+        }
+    }
+
+    // Pick randomly from the first 8 candidates for variety
+    const pool = candidates.slice(0, 8);
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (!pick) return null;
+
+    pick.info.requester = 'autoplay';
+    player.queue.add(pick);
+    if (!player.playing) await player.play();
+    return pick;
+}
+
 async function initializePlayer(client) {
     const nodeManager = await initializeLavalinkManager(client);
     client.riffy = nodeManager.riffy;
@@ -769,7 +830,7 @@ async function initializePlayer(client) {
             if (settings?.autoplay) {
                 await cleanupPreviousTrackMessages(channel, guildId);
                 
-                const nextTrack = await player.autoplay(player);
+                const nextTrack = await betterAutoplay(client, player);
 
                 if (!nextTrack) {
                     await cleanupTrackMessages(client, player);
